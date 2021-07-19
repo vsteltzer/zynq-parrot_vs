@@ -1,11 +1,11 @@
-
+SHELL := /bin/bash
 include $(TOP)/cosim/mk/Makefile.common
 
 MODE ?= tcl
 
 # update this with a pointer to your vivado install
 #XILINX_ENV=source /tools/Xilinx/Vivado/2019.1/settings64.sh
-XILINX_ENV=source /gro/cad/Xilinx/Vivado/2019.1/settings64.sh
+XILINX_ENV=source /mnt/xilinx/Vivado/2019.1/settings64.sh
 
 CFLAGS += -O2
 CFLAGS += -lcma -lpthread

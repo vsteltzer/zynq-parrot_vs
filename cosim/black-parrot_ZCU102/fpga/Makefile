@@ -6,7 +6,7 @@ CURR := $(shell pwd)
 #############################
 export PART       ?= xczu9eg-ffvb1156-2-e
 export TOP_MODULE ?= top
-export BASENAME   ?= blackparrot_ZCU102_vdp
+export BASENAME   ?= BP_ZCU102_vdp
 
 #############################
 # Accelerator Software Settings

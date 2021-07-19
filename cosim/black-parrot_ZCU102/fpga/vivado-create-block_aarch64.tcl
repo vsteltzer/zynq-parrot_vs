@@ -1,11 +1,11 @@
-set base_name $env(BASENAME) #blackparrot_ZCU102
-set project_name ${base_name}_bd_proj
+set project_name $::env(BASENAME)_bd_proj
+set bd_name $::env(BASENAME)_bd_1
 
 # Create project
 create_project -force ${project_name} [pwd] -part xczu9eg-ffvb1156-2-e
 
 # Create Block Design
-create_bd_design "blackparrot_bd_1"
+create_bd_design ${bd_name}
 update_compile_order -fileset sources_1
 startgroup
   # Create instance: zynq_ultra_ps_e_0, and set properties
@@ -26,7 +26,7 @@ startgroup
    CONFIG.PSU__USE__S_AXI_GP2 {1} \
  ] $zynq_ultra_ps_e_0
 endgroup
-open_bd_design ${project_name}.srcs/sources_1/bd/blackparrot_bd_1/blackparrot_bd_1.bd}
+open_bd_design ${project_name}.srcs/sources_1/bd/${bd_name}/${bd_name}.bd}
 set_property  ip_repo_paths  fpga_build [current_project]
 update_ip_catalog
 
@@ -116,8 +116,8 @@ set_property range 1G [get_bd_addr_segs {zynq_ultra_ps_e_0/Data/SEG_top_0_reg04}
 
 # Validate, wrapp and save
 validate_bd_design
-make_wrapper -files [get_files ${project_name}.srcs/sources_1/bd/blackparrot_bd_1/blackparrot_bd_1.bd] -top
-add_files -norecurse ${project_name}.srcs/sources_1/bd/blackparrot_bd_1/hdl/blackparrot_bd_1_wrapper.v
+make_wrapper -files [get_files ${project_name}.srcs/sources_1/bd/${bd_name}/${bd_name}.bd] -top
+add_files -norecurse ${project_name}.srcs/sources_1/bd/${bd_name}/hdl/${bd_name}_wrapper.v
 delete_bd_objs [get_bd_nets reset_rtl_0_1] [get_bd_ports reset_rtl_0]
 save_bd_design
 
