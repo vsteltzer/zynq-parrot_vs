@@ -44,7 +44,11 @@ fpga_build_ip: clean_fpga_build $(FLIST)
 	-@tail -n5 vivado.log
 
 fpga_build: fpga_build_ip
+ifeq ($(PS_ARCH),__arm__)
 	$(VIVADO) -source $(CURR)/vivado-create-block.tcl -mode $(MODE)
+else ifeq ($(PS_ARCH),__aarch64__)
+	$(VIVADO) -source $(CURR)/vivado-create-block_aarch64.tcl -mode $(MODE)
+endif
 	$(MAKE) fpga_report_build_block
 
 pack_bitstream:

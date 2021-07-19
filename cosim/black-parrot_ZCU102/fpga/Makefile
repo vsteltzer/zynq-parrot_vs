@@ -6,13 +6,13 @@ CURR := $(shell pwd)
 #############################
 export PART       ?= xczu9eg-ffvb1156-2-e
 export TOP_MODULE ?= top
-export BASENAME   ?= blackparrot
+export BASENAME   ?= blackparrot_ZCU102_vdp
 
 #############################
 # Accelerator Software Settings
 #############################
 export NBF_FILE     ?= $(abspath ../prog.nbf)
-export HOST_PROGRAM ?= $(abspath ../ps.cpp)
+export HOST_PROGRAM ?= $(abspath ../ps_aarch64.cpp)
 export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
