@@ -147,6 +147,8 @@ module top_zynq
    localparam bp_axil_data_width_lp = 32;
    localparam bp_axi_addr_width_lp  = 32;
    localparam bp_axi_data_width_lp  = 64;
+   
+   m00_axi_arqos = 4'b0000;
 
    logic [2:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
@@ -617,7 +619,7 @@ module top_zynq
       ,.m_axi_arlen_o    (m00_axi_arlen)
       ,.m_axi_arsize_o   (m00_axi_arsize)
       ,.m_axi_arburst_o  (m00_axi_arburst)
-      ,.m_axi_arqos_o    (m00_axi_arqos)
+      ,.m_axi_arqos_o    ()
 
       ,.m_axi_rdata_i    (m00_axi_rdata)
       ,.m_axi_rvalid_i   (m00_axi_rvalid)
