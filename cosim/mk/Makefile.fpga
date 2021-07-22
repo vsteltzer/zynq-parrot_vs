@@ -47,11 +47,11 @@ fpga_build: fpga_build_ip
 ifeq ($(PS_ARCH),__arm__)
 	$(XILINX_ENV) && $(VIVADO) -source $(CURR)/vivado-create-block.tcl -mode $(MODE)
 else ifeq ($(PS_ARCH),__aarch64__)
-	ifeq ($(BD_INTERFACE),smartconn)
-		$(XILINX_ENV) && $(VIVADO) -source $(CURR)/vivado-create-block_aarch64_interconn.tcl -mode $(MODE)
-	else ifeq ($(BD_INTERFACE),interconn)
-		$(XILINX_ENV) && $(VIVADO) -source $(CURR)/vivado-create-block_aarch64_smartconn.tcl -mode $(MODE)
-	endif
+ifeq ($(BD_INTERFACE),smartconn)
+	$(XILINX_ENV) && $(VIVADO) -source $(CURR)/vivado-create-block_aarch64_smartconn.tcl -mode $(MODE)
+else ifeq ($(BD_INTERFACE),interconn)
+	$(XILINX_ENV) && $(VIVADO) -source $(CURR)/vivado-create-block_aarch64_interconn.tcl -mode $(MODE)
+endif
 endif
 	$(MAKE) fpga_report_build_block
 
