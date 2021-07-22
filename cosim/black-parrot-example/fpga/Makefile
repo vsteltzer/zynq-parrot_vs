@@ -17,6 +17,7 @@ export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
 export SIM_DEFINES  += -DFPGA
+export PS_ARCH      ?= __arm__
 
 #SIM_DEFINES  +=-DSKIP_DRAM_TESTING
 

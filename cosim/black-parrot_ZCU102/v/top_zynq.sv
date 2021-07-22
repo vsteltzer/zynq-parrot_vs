@@ -9,7 +9,7 @@ module top_zynq
  import bp_common_pkg::*;
  import bp_be_pkg::*;
  import bp_me_pkg::*;
- #(parameter bp_params_e bp_params_p = e_bp_default_cfg
+ #(parameter bp_params_e bp_params_p = e_bp_multicore_1_acc_vdp_cfg
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
@@ -147,8 +147,6 @@ module top_zynq
    localparam bp_axil_data_width_lp = 32;
    localparam bp_axi_addr_width_lp  = 32;
    localparam bp_axi_data_width_lp  = 64;
-   
-   m00_axi_arqos = 4'b0000;
 
    logic [2:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
@@ -619,7 +617,7 @@ module top_zynq
       ,.m_axi_arlen_o    (m00_axi_arlen)
       ,.m_axi_arsize_o   (m00_axi_arsize)
       ,.m_axi_arburst_o  (m00_axi_arburst)
-      ,.m_axi_arqos_o    ()
+      ,.m_axi_arqos_o    (m00_axi_arqos)
 
       ,.m_axi_rdata_i    (m00_axi_rdata)
       ,.m_axi_rvalid_i   (m00_axi_rvalid)
