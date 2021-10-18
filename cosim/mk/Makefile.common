@@ -11,6 +11,8 @@ export BP_TOOLS_DIR         ?= $(BLACKPARROT_DIR)/tools
 export BASEJUMP_STL_DIR     ?= $(BP_EXTERNAL_DIR)/basejump_stl
 export HARDFLOAT_DIR        ?= $(BP_EXTERNAL_DIR)/HardFloat
 
+export CVA6_DIR             ?= $(COSIM_DIR)/import/cva6
+
 export COSIM_DIR            ?= $(TOP)/cosim
 export COSIM_INCLUDE_DIR    ?= $(COSIM_DIR)/include
 export COSIM_SRC_DIR        ?= $(COSIM_DIR)/v
