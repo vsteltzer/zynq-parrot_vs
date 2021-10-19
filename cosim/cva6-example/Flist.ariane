@@ -1,6 +1,8 @@
-+incdir+$CVA6_DIR/src/common_cells/include/
++incdir+$CVA6_DIR/src/fpu/src/common_cells/include/common_cells/
 +incdir+$CVA6_DIR/src/util/
-+incdir+$BASEJUMP_STL_DIR/bsg_misc/
++incdir+$BASEJUMP_STL_DIR/bsg_dataflow
++incdir+$BASEJUMP_STL_DIR/bsg_mem
++incdir+$BASEJUMP_STL_DIR/bsg_misc
 $CVA6_DIR/src/common_cells/src/deprecated/rrarbiter.sv
 $CVA6_DIR/src/common_cells/src/deprecated/fifo_v1.sv
 $CVA6_DIR/src/common_cells/src/deprecated/fifo_v2.sv
