@@ -37,13 +37,13 @@ inline unsigned long long get_counter_64(bp_zynq_pl *zpl, unsigned int addr) {
   } while (1);
 }
 
-#ifdef VERILATOR
-int main(int argc, char **argv) {
-#else
+#ifdef VCS
 extern "C" void cosim_main(char *argstr) {
   int argc = get_argc(argstr);
   char *argv[argc];
   get_argv(argstr, argc, argv);
+#else
+int main(int argc, char **argv) {
 #endif
   // this ensures that even with tee, the output is line buffered
   // so that we can see what is happening in real time
@@ -250,8 +250,7 @@ extern "C" void cosim_main(char *argstr) {
 
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
-  unsigned long long minstrret_start =
-      get_counter_64(zpl, 0x18 + GP0_ADDR_BASE);
+  unsigned long long minstrret_start = 0;
   unsigned long long mtime_start = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
   bsg_pr_dbg_ps("ps.cpp: finished nbf load\n");
   bsg_pr_info("ps.cpp: polling i/o\n");
@@ -268,11 +267,12 @@ extern "C" void cosim_main(char *argstr) {
 
   unsigned long long mtime_stop = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
 
-  unsigned long long minstrret_stop = get_counter_64(zpl, 0x18 + GP0_ADDR_BASE);
+  unsigned long long minstrret_stop = 0;
   // test delay for reading counter
-  unsigned long long counter_data = get_counter_64(zpl, 0x18 + GP0_ADDR_BASE);
+  unsigned long long counter_data = 0;
+
   clock_gettime(CLOCK_MONOTONIC, &end);
-  setlocale(LC_NUMERIC, "");
+  //setlocale(LC_NUMERIC, "");
   bsg_pr_info("ps.cpp: end polling i/o\n");
   bsg_pr_info("ps.cpp: minstret (instructions retired): %'16llu (%16llx)\n",
               minstrret_start, minstrret_start);
@@ -305,10 +305,10 @@ extern "C" void cosim_main(char *argstr) {
 
   bsg_pr_info("ps.cpp: BP DRAM USAGE MASK (each bit is 8 MB): "
               "%-8.8x%-8.8x%-8.8x%-8.8x\n",
-              zpl->axil_read(0x2C + GP0_ADDR_BASE),
               zpl->axil_read(0x28 + GP0_ADDR_BASE),
               zpl->axil_read(0x24 + GP0_ADDR_BASE),
-              zpl->axil_read(0x20 + GP0_ADDR_BASE));
+              zpl->axil_read(0x20 + GP0_ADDR_BASE),
+              zpl->axil_read(0x18 + GP0_ADDR_BASE));
 #ifdef FPGA
   // in general we do not want to free the dram; the Xilinx allocator has a
   // tendency to
@@ -404,7 +404,8 @@ bool decode_bp_output(bp_zynq_pl *zpl, int data) {
   int print_data = data & 0xFF;
   if (rd_wr) {
     if (address == 0x101000) {
-      bsg_pr_info("%c", print_data);
+      printf("%c", print_data);
+      fflush(stdout);
       return false;
     } else if (address == 0x102000) {
       if (print_data == 0)

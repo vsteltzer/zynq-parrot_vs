@@ -30,7 +30,10 @@ include $(TOP)/cosim/mk/Makefile.verilator
 # Modify base flist
 #############################
 $(FLIST): $(BASE_FLIST)
-	cat ../Flist.ariane > $@
+	echo "+incdir+$$BASEJUMP_STL_DIR)/bsg_cache" > $@
+	echo "+incdir+$$BASEJUMP_STL_DIR/bsg_test" >> $@
+	echo "+incdir+$$BASEJUMP_STL_DIR/bsg_noc" >> $@
+	cat ../Flist.ariane >> $@
 	echo "$(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.cpp" >> $@
 	echo "$(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_clock_gen.v " >> $@
 	echo "$(BASEJUMP_STL_DIR)/bsg_test/bsg_nonsynth_dpi_gpio.v " >> $@

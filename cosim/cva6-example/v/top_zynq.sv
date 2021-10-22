@@ -145,7 +145,7 @@ module top_zynq
    logic                                        ps_to_pl_fifo_v_lo, ps_to_pl_fifo_yumi_li;
 
    localparam debug_lp = 1;
-   localparam memory_upper_limit_lp = 120*1024*1024;
+   localparam memory_upper_limit_lp = 241*1024*1024;
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
@@ -273,6 +273,22 @@ module top_zynq
    //
    //
 
+   logic [64-1:0] io_awaddr;
+   logic io_awvalid, io_awready;
+   logic [64-1:0] io_wdata;
+   logic [8-1:0] io_wstrb;
+   logic io_wvalid, io_wready;
+   logic [1:0] io_bresp;
+   logic io_bvalid, io_bready;
+   logic [64-1:0] io_araddr;
+   logic io_arvalid, io_arready;
+   logic [64-1:0] io_rdata;
+   logic [1:0] io_rresp;
+   logic io_rvalid, io_rready;
+
+   logic io_v, io_we;
+   logic [64-1:0] io_addr, io_data;
+
    logic [64-1:0] waddr_translated_lo, raddr_translated_lo;
 
         // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
@@ -294,8 +310,8 @@ module top_zynq
    // BlackParrot reset signal is connected to a CSR (along with
    // the AXI interface reset) so that a regression can be launched
    // without having to reload the bitstream
-   wire reset_li = csr_data_lo[0][0] & s01_axi_aresetn;
-   wire core_reset_li = csr_data_lo[3][0] & s01_axi_aresetn;
+   wire resetn_li = csr_data_lo[0][0] & s01_axi_aresetn;
+   wire core_resetn_li = csr_data_lo[3][0] & s01_axi_aresetn;
 
    // AXI4 to AXI3 stiching
    assign m00_axi_awid[5] = '0;
@@ -304,16 +320,12 @@ module top_zynq
    assign m00_axi_awlock[1] = '0;
    assign m00_axi_arlock[1] = '0;
 
-   logic io_req, io_we;
-   logic [64-1:0] io_addr, io_data;
-   logic [8-1:0] io_be;
-
-   assign pl_to_ps_fifo_v_li    = io_req & io_we;
-   assign pl_to_ps_fifo_data_li = {(io_req & io_we), io_addr[22:0], io_data[7:0]};
+   assign pl_to_ps_fifo_v_li    = io_v & io_we;
+   assign pl_to_ps_fifo_data_li = {(io_v & io_we), io_addr[22:0], io_data[7:0]};
 
    bsg_dff_reset #(.width_p(128)) dff
      (.clk_i(s01_axi_aclk)
-      ,.reset_i(~reset_li)
+      ,.reset_i(~resetn_li)
       ,.data_i(mem_profiler_r
                | m00_axi_awvalid << (axi_awaddr[29-:7])
                | m00_axi_arvalid << (axi_araddr[29-:7])
@@ -328,8 +340,8 @@ module top_zynq
      )
     ariane
      (.clk_i(s01_axi_aclk)
-     ,.resetn_i(reset_li)
-     ,.core_resetn_i(core_reset_li)
+     ,.resetn_i(resetn_li)
+     ,.core_resetn_i(core_resetn_li)
 
      ,.s_awvalid_i (s01_axi_awvalid)
      ,.s_awburst_i (s01_axi_awburst)
@@ -425,11 +437,68 @@ module top_zynq
      ,.m_ruser_i   ('0)
      ,.m_rready_o  (m00_axi_rready)
 
-     ,.io_req_o    (io_req)
-     ,.io_we_o     (io_we)
-     ,.io_addr_o   (io_addr)
-     ,.io_be_o     (io_be)
-     ,.io_wdata_o  (io_data)
+     ,.io_awready_i(io_awready)
+     ,.io_awvalid_o(io_awvalid)
+     ,.io_awaddr_o (io_awaddr)
+
+     ,.io_wready_i (io_wready)
+     ,.io_wvalid_o (io_wvalid)
+     ,.io_wstrb_o  (io_wstrb)
+     ,.io_wdata_o  (io_wdata)
+
+     ,.io_bvalid_i (io_bvalid)
+     ,.io_bresp_i  (io_bresp)
+     ,.io_bready_o (io_bready)
+
+     ,.io_arready_i(io_arready)
+     ,.io_arvalid_o(io_arvalid)
+     ,.io_araddr_o (io_araddr)
+
+     ,.io_rvalid_i (io_rvalid)
+     ,.io_rdata_i  (io_rdata)
+     ,.io_rresp_i  (io_rresp)
+     ,.io_rready_o (io_rready)
+     );
+
+   axi_lite_to_dma
+    #(.addr_width_p(64)
+     ,.data_width_p(64)
+     )
+    i_axi_lite_converter
+     (.clk_i(s01_axi_aclk)
+     ,.reset_i(~resetn_li)
+
+     ,.awready_o(io_awready)
+     ,.awvalid_i(io_awvalid)
+     ,.awaddr_i (io_awaddr)
+
+     ,.wready_o (io_wready)
+     ,.wvalid_i (io_wvalid)
+     ,.wstrb_i  (io_wstrb)
+     ,.wdata_i  (io_wdata)
+
+     ,.bvalid_o (io_bvalid)
+     ,.bresp_o  (io_bresp)
+     ,.bready_i (io_bready)
+
+     ,.arready_o(io_arready)
+     ,.arvalid_i(io_arvalid)
+     ,.araddr_i (io_araddr)
+
+     ,.rvalid_o (io_rvalid)
+     ,.rdata_o  (io_rdata)
+     ,.rresp_o  (io_rresp)
+     ,.rready_i (io_rready)
+
+     ,.ready_i  (pl_to_ps_fifo_ready_lo)
+     ,.v_o      (io_v)
+     ,.we_o     (io_we)
+     ,.addr_o   (io_addr)
+     ,.data_o   (io_data)
+
+     ,.ready_o  ()
+     ,.v_i      ('0)
+     ,.data_i   ('0)
      );
 
    // synopsys translate_off

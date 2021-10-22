@@ -112,12 +112,28 @@ module ariane_top
    ,input m_ruser_i
    ,output m_rready_o
 
-   // Host IO
-   ,output io_req_o
-   ,output io_we_o
-   ,output [AXI_ADDR_WIDTH-1:0] io_addr_o
-   ,output [AXI_STRB_WIDTH-1:0] io_be_o
+   // GPIO Master AXI4-Lite port
+   ,input io_awready_i
+   ,output io_awvalid_o
+   ,output [AXI_ADDR_WIDTH-1:0] io_awaddr_o
+
+   ,input io_wready_i
+   ,output io_wvalid_o
+   ,output [AXI_STRB_WIDTH-1:0] io_wstrb_o
    ,output [AXI_DATA_WIDTH-1:0] io_wdata_o
+
+   ,input io_bvalid_i
+   ,input [1:0] io_bresp_i
+   ,output io_bready_o
+
+   ,input io_arready_i
+   ,output io_arvalid_o
+   ,output [AXI_ADDR_WIDTH-1:0] io_araddr_o
+
+   ,input io_rvalid_i
+   ,input [AXI_DATA_WIDTH-1:0] io_rdata_i
+   ,input [1:0] io_rresp_i
+   ,output io_rready_o
   );
 
 localparam NBSlave = 2; // 0: ariane, 1: host
@@ -144,6 +160,11 @@ AXI_BUS #(
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves   ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH     )
 ) dram();
+
+AXI_LITE #(
+    .AXI_ADDR_WIDTH ( AXI_ADDR_WIDTH     ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH     )
+) gpio();
 
 // Slave connections
 assign slave[1].aw_valid  = s_awvalid_i;
@@ -243,6 +264,29 @@ assign dram.r_id          = m_rid_i;
 assign dram.r_last        = m_rlast_i;
 assign dram.r_user        = m_ruser_i;
 assign m_rready_o         = dram.r_ready;
+
+// GPIO connections
+assign gpio.aw_ready      = io_awready_i;
+assign io_awvalid_o       = gpio.aw_valid;
+assign io_awaddr_o        = gpio.aw_addr;
+
+assign gpio.w_ready       = io_wready_i;
+assign io_wvalid_o        = gpio.w_valid;
+assign io_wstrb_o         = gpio.w_strb;
+assign io_wdata_o         = gpio.w_data;
+
+assign gpio.b_valid       = io_bvalid_i;
+assign gpio.b_resp        = io_bresp_i;
+assign io_bready_o        = gpio.b_ready;
+
+assign gpio.ar_ready      = io_arready_i;
+assign io_arvalid_o       = gpio.ar_valid;
+assign io_araddr_o        = gpio.ar_addr;
+
+assign gpio.r_valid       = io_rvalid_i;
+assign gpio.r_data        = io_rdata_i;
+assign gpio.r_resp        = io_rresp_i;
+assign io_rready_o        = gpio.r_ready;
 
 // ---------------
 // AXI Xbar
@@ -367,28 +411,23 @@ axi_riscv_atomics_wrap #(
 // ---------------
 // GPIO
 // ---------------
-axi2mem #(
-  .AXI_ID_WIDTH   ( AxiIdWidthSlaves  ),
-  .AXI_ADDR_WIDTH ( AXI_ADDR_WIDTH    ),
-  .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
-  .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
-) i_axi2mem (
-  .clk_i  ( clk_i                    ),
-  .rst_ni ( resetn_i                 ),
-  .slave  ( master[ariane_soc::GPIO] ),
-  .req_o  ( io_req_o                 ),
-  .we_o   ( io_we_o                  ),
-  .addr_o ( io_addr_o                ),
-  .be_o   ( io_be_o                  ),
-  .data_o ( io_wdata_o               ),
-  .data_i ( '0                       )
+
+axi_to_axi_lite #(
+  .NUM_PENDING_RD(),
+  .NUM_PENDING_WR()
+) i_axi2axilite (
+  .clk_i      ( clk_i                   ),
+  .rst_ni     ( resetn_i                ),
+  .testmode_i ( '0                      ),
+  .in         ( master[ariane_soc::GPIO]),
+  .out        ( gpio                    )
 );
 
-localparam debug = 0;
+localparam debug_lp = 1;
 
 always @(negedge clk_i) begin
-  if (debug) begin
-  if (slave[1].ar_valid & slave[1].ar_ready)
+  if (debug_lp) begin
+/*  if (slave[1].ar_valid & slave[1].ar_ready)
     $display("ariane_top: Slave 1 READ Addr %x, Len %x", slave[1].ar_addr, slave[1].ar_len);
   if (slave[1].aw_valid & slave[1].aw_ready)
     $display("ariane_top: Slave 1 WRITE Addr %x, Size %x", slave[1].aw_addr, slave[1].aw_size);
@@ -427,7 +466,7 @@ always @(negedge clk_i) begin
     $display("ariane_top: dram READ Data %x, ID %x", dram.r_data, dram.r_id);
   if (dram.b_valid & dram.b_ready)
     $display("ariane_top: dram WRITE Resp %x, ID %x", dram.b_resp, dram.b_id);
-
+*/
   if (master[ariane_soc::GPIO].ar_valid & master[ariane_soc::GPIO].ar_ready)
     $display("ariane_top: GPIO READ Addr %x", master[ariane_soc::GPIO].ar_addr);
   if (master[ariane_soc::GPIO].aw_valid & master[ariane_soc::GPIO].aw_ready)
