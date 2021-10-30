@@ -144,8 +144,13 @@ module top_zynq
    logic                                        pl_to_ps_fifo_v_li, pl_to_ps_fifo_ready_lo;
    logic                                        ps_to_pl_fifo_v_lo, ps_to_pl_fifo_yumi_li;
 
-   localparam debug_lp = 1;
+   localparam debug_lp = 0;
    localparam memory_upper_limit_lp = 241*1024*1024;
+   localparam csr_num_lp = 2;
+   logic [csr_num_lp-1:0][64-1:0] csr_data_li;
+
+   assign csr_data_li[0] = ariane.i_ariane.csr_regfile_i.cycle_q[0+:64];
+   assign csr_data_li[1] = ariane.i_ariane.csr_regfile_i.instret_q[0+:64];
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
@@ -166,7 +171,7 @@ module top_zynq
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
-      ,.num_regs_pl_to_ps_p(4)
+      ,.num_regs_pl_to_ps_p(4 + (2*csr_num_lp))
       ,.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH)
       ,.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
       ) zps
@@ -186,7 +191,8 @@ module top_zynq
         // to increment the counters.
         //
 
-        ,.csr_data_i({ mem_profiler_r[127:96]
+        ,.csr_data_i({ csr_data_li
+                       , mem_profiler_r[127:96]
                        , mem_profiler_r[95:64]
                        , mem_profiler_r[63:32]
                        , mem_profiler_r[31:0]

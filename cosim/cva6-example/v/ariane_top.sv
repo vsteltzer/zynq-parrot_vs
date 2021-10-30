@@ -136,9 +136,9 @@ module ariane_top
    ,output io_rready_o
   );
 
-localparam NBSlave = 2; // 0: ariane, 1: host
-localparam AxiIdWidthMaster = 4;
-localparam AxiIdWidthSlaves = AxiIdWidthMaster + $clog2(NBSlave); // 5
+localparam NBSlave = ariane_soc::NrSlaves; // 0: ariane, 1: host
+localparam AxiIdWidthMaster = ariane_soc::IdWidth;
+localparam AxiIdWidthSlaves = ariane_soc::IdWidthSlave; // 5
 
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDR_WIDTH     ),
@@ -309,24 +309,12 @@ axi_node_wrap_with_slices #(
     .slave        ( slave        ),
     .master       ( master       ),
     .start_addr_i ({
-        ariane_soc::DebugBase,
-        ariane_soc::ROMBase,
         ariane_soc::CLINTBase,
-        ariane_soc::PLICBase,
-        ariane_soc::UARTBase,
-        ariane_soc::SPIBase,
-        ariane_soc::EthernetBase,
         ariane_soc::GPIOBase,
         ariane_soc::DRAMBase
     }),
     .end_addr_i   ({
-        ariane_soc::DebugBase    + ariane_soc::DebugLength - 1,
-        ariane_soc::ROMBase      + ariane_soc::ROMLength - 1,
         ariane_soc::CLINTBase    + ariane_soc::CLINTLength - 1,
-        ariane_soc::PLICBase     + ariane_soc::PLICLength - 1,
-        ariane_soc::UARTBase     + ariane_soc::UARTLength - 1,
-        ariane_soc::SPIBase      + ariane_soc::SPILength - 1,
-        ariane_soc::EthernetBase + ariane_soc::EthernetLength -1,
         ariane_soc::GPIOBase     + ariane_soc::GPIOLength - 1,
         ariane_soc::DRAMBase     + ariane_soc::DRAMLength - 1
     }),
@@ -423,11 +411,12 @@ axi_to_axi_lite #(
   .out        ( gpio                    )
 );
 
-localparam debug_lp = 1;
+localparam debug_lp = 0;
 
 always @(negedge clk_i) begin
   if (debug_lp) begin
-/*  if (slave[1].ar_valid & slave[1].ar_ready)
+
+  if (slave[1].ar_valid & slave[1].ar_ready)
     $display("ariane_top: Slave 1 READ Addr %x, Len %x", slave[1].ar_addr, slave[1].ar_len);
   if (slave[1].aw_valid & slave[1].aw_ready)
     $display("ariane_top: Slave 1 WRITE Addr %x, Size %x", slave[1].aw_addr, slave[1].aw_size);
@@ -466,13 +455,13 @@ always @(negedge clk_i) begin
     $display("ariane_top: dram READ Data %x, ID %x", dram.r_data, dram.r_id);
   if (dram.b_valid & dram.b_ready)
     $display("ariane_top: dram WRITE Resp %x, ID %x", dram.b_resp, dram.b_id);
-*/
-  if (master[ariane_soc::GPIO].ar_valid & master[ariane_soc::GPIO].ar_ready)
-    $display("ariane_top: GPIO READ Addr %x", master[ariane_soc::GPIO].ar_addr);
+
   if (master[ariane_soc::GPIO].aw_valid & master[ariane_soc::GPIO].aw_ready)
     $display("ariane_top: GPIO WRITE Addr %x", master[ariane_soc::GPIO].aw_addr);
   if (master[ariane_soc::GPIO].w_valid & master[ariane_soc::GPIO].w_ready)
     $display("ariane_top: GPIO WRITE Data %x, Strb %x", master[ariane_soc::GPIO].w_data, master[ariane_soc::GPIO].w_strb);
+  if (master[ariane_soc::GPIO].b_valid & master[ariane_soc::GPIO].b_ready)
+    $display("ariane_top: GPIO WRITE Resp %x, ID %x", master[ariane_soc::GPIO].b_resp, master[ariane_soc::GPIO].b_id);
  end
 end
 
