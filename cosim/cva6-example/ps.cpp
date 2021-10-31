@@ -12,6 +12,8 @@
 #include <bitset>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
+#include <thread>
 
 #include "bp_zynq_pl.h"
 
@@ -24,6 +26,17 @@
 
 void nbf_load(bp_zynq_pl *zpl, char *);
 bool decode_bp_output(bp_zynq_pl *zpl, int data);
+void report(bp_zynq_pl *zpl, char *);
+void monitor(bp_zynq_pl *zpl, char *);
+bool run = true;
+
+const char* metrics[] = {
+  "mcycle", "minstret"
+};
+
+const char* samples[] = {
+  "mcycle", "minstret"
+};
 
 inline unsigned long long get_counter_64(bp_zynq_pl *zpl, unsigned int addr) {
   unsigned long long val;
@@ -209,6 +222,7 @@ int main(int argc, char **argv) {
   unsigned long long mtime_start = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
   bsg_pr_info("ps.cpp: polling i/o\n");
 
+  std::thread t(monitor, zpl, argv[1]);
   while (1) {
     // keep reading as long as there is data
     data = zpl->axil_read(0x14 + GP0_ADDR_BASE);
@@ -218,6 +232,8 @@ int main(int argc, char **argv) {
     } else if (done)
       break;
   }
+  run = false;
+  t.join();
 
   unsigned long long mcycle_stop = get_counter_64(zpl,0x2C + GP0_ADDR_BASE);
   unsigned long long minstret_stop = get_counter_64(zpl,0x34 + GP0_ADDR_BASE);
@@ -262,6 +278,8 @@ int main(int argc, char **argv) {
               zpl->axil_read(0x24 + GP0_ADDR_BASE),
               zpl->axil_read(0x20 + GP0_ADDR_BASE),
               zpl->axil_read(0x1C + GP0_ADDR_BASE));
+
+  report(zpl, argv[1]);
 
 #ifdef FPGA
   // in general we do not want to free the dram; the Xilinx allocator has a
@@ -389,4 +407,64 @@ bool decode_bp_output(bp_zynq_pl *zpl, int data) {
     bsg_pr_err("ps.cpp: Unsupported read (%x)\n", data);
     return false;
   }
+}
+
+void report(bp_zynq_pl *zpl, char* nbf_filename) {
+
+  char filename[100];
+  if(strrchr(nbf_filename, '/') != NULL)
+    strcpy(filename, 1 + strrchr(nbf_filename, '/'));
+  else
+    strcpy(filename, nbf_filename);
+  *strrchr(filename, '.') = '\0';
+  strcat(filename, ".rep");
+  ofstream file(filename);
+
+  if(file.is_open()) {
+    file << nbf_filename << endl;
+    for(int i=0; i<sizeof(metrics)/sizeof(metrics[0]); i++) {
+      file << metrics[i] << "\t";
+      file << get_counter_64(zpl,GP0_ADDR_BASE + 0x2C + i*8) << "\n";
+    }
+    file.close();
+  }
+  else printf("Cannot open report file: %s\n", filename);
+}
+
+void monitor(bp_zynq_pl *zpl, char* nbf_filename) {
+
+  char filename[100];
+  if(strrchr(nbf_filename, '/') != NULL)
+    strcpy(filename, 1 + strrchr(nbf_filename, '/'));
+  else
+    strcpy(filename, nbf_filename);
+  *strrchr(filename, '.') = '\0';
+  strcat(filename, ".sample");
+  ofstream file(filename, ios::binary);
+
+  int sampleIdx[sizeof(samples)/sizeof(samples[0])];
+  for(int i=0; i<sizeof(samples)/sizeof(samples[0]); i++) {
+    bool found = false;
+    for(int j=0; j<sizeof(metrics)/sizeof(metrics[0]); j++) {
+      if(!strcmp(samples[i], metrics[j])) {
+        sampleIdx[i] = j;
+        found = true;
+        break;
+      }
+    }
+    if(!found)
+      printf("Cannot find sample %s index!", samples[i]);
+  }
+
+  if(file.is_open()) {
+    while(run) {
+      std::this_thread::sleep_for(100ms);
+      for(int i=0; i<sizeof(samples)/sizeof(samples[0]); i++) {
+        unsigned long long sample = get_counter_64(zpl,GP0_ADDR_BASE + 0x2C + 8*sampleIdx[i]);
+        file.write((char*)&sample, sizeof(sample));
+      }
+    }
+    file.close();
+  }
+  else printf("Cannot open ipc file: %s\n", filename);
 }
