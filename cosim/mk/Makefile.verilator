@@ -12,6 +12,7 @@ VV_OPTS += $(VV_DEFS)
 
 CFLAGS += -DVERILATOR
 CFLAGS += -std=c++14
+CFLAGS += -lpthread
 
 LDFLAGS += -lpthread
 

@@ -11,7 +11,7 @@ module top_zynq
 
      // needs to be updated to fit all addresses used
      // by bsg_zynq_pl_shell read_locs_lp (update in top.v as well)
-     , parameter integer C_S00_AXI_ADDR_WIDTH   = 6
+     , parameter integer C_S00_AXI_ADDR_WIDTH   = 8
      , parameter integer C_S01_AXI_DATA_WIDTH   = 64
      // the ARM AXI S01 interface drops the top two bits
      , parameter integer C_S01_AXI_ADDR_WIDTH   = 64
@@ -146,11 +146,83 @@ module top_zynq
 
    localparam debug_lp = 0;
    localparam memory_upper_limit_lp = 241*1024*1024;
-   localparam csr_num_lp = 2;
+
+   wire resetn_li = csr_data_lo[0][0] & s01_axi_aresetn;
+   wire core_resetn_li = csr_data_lo[3][0] & s01_axi_aresetn;
+
+   `define COREPATH ariane.i_ariane
+
+   localparam csr_num_lp = 20;
    logic [csr_num_lp-1:0][64-1:0] csr_data_li;
 
    assign csr_data_li[0] = ariane.i_ariane.csr_regfile_i.cycle_q[0+:64];
    assign csr_data_li[1] = ariane.i_ariane.csr_regfile_i.instret_q[0+:64];
+
+  ariane_stall_profiler #(
+    .width_p(64)
+  ) i_profiler (
+    .clk_i (s01_axi_aclk),
+    .reset_i (~core_resetn_li),
+
+    .branch_mispredict_i(`COREPATH.controller_i.resolved_branch_i.is_mispredict),
+    .flush_amo_i(`COREPATH.controller_i.flush_commit_i),
+    .flush_csr_i(`COREPATH.controller_i.flush_csr_i),
+    .exception_i(`COREPATH.controller_i.ex_valid_i | `COREPATH.controller_i.eret_i),
+
+    .fe_bubble_i(~`COREPATH.i_frontend.fetch_entry_valid_o),
+
+    .is_valid_i(`COREPATH.issue_stage_i.decoded_instr_valid_i),
+    .is_ack_i(`COREPATH.issue_stage_i.decoded_instr_ack_o),
+    .is_unresolved_branch_i(`COREPATH.issue_stage_i.i_scoreboard.unresolved_branch_i),
+    .is_sb_full_i(`COREPATH.issue_stage_i.i_scoreboard.issue_full),
+    .is_ro_mul_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.mult_valid_q
+                      & (`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu != ariane_pkg::MULT)),
+    .is_ro_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.stall),
+    .is_ro_fubusy_i(`COREPATH.issue_stage_i.i_issue_read_operands.fu_busy),
+    .is_ro_fu_i(`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu),
+
+    .issue_en_i(`COREPATH.issue_stage_i.i_scoreboard.issue_en),
+    .issue_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.issue_pointer_q),
+
+    .flu_ready_i(`COREPATH.ex_stage_i.flu_ready_o),
+
+    .load_valid_i(`COREPATH.ex_stage_i.lsu_i.ld_valid_i),
+    .pop_ld_i(`COREPATH.ex_stage_i.lsu_i.pop_ld),
+    .load_done_i(`COREPATH.ex_stage_i.lsu_i.ld_valid),
+
+    .store_valid_i(`COREPATH.ex_stage_i.lsu_i.st_valid_i),
+    .pop_st_i(`COREPATH.ex_stage_i.lsu_i.pop_st),
+    .store_done_i(`COREPATH.ex_stage_i.lsu_i.st_valid),
+
+    .load_state_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.state_q),
+    .store_state_i(`COREPATH.ex_stage_i.lsu_i.i_store_unit.state_q),
+    .fpu_busy_i(`COREPATH.ex_stage_i.fpu_gen.fpu_i.fpu_gen.i_fpnew_bulk.busy_o),
+
+    .commit_ack_i(`COREPATH.issue_stage_i.i_scoreboard.commit_ack_i[0]),
+    .commit_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.commit_pointer_q),
+    .commit_issued_q_i(`COREPATH.issue_stage_i.i_scoreboard.mem_q_commit.issued),
+    .commit_fu_q_i(`COREPATH.issue_stage_i.commit_instr_o[0].fu),
+    .commit_haz_i(`COREPATH.issue_stage_i.commit_instr_o[0].valid & ~`COREPATH.issue_stage_i.commit_ack_i[0]),
+
+    .fe_wait_o(csr_data_li[2]),
+    .is_busy_o(csr_data_li[3]),
+    .sb_full_o(csr_data_li[4]),
+    .br_haz_o(csr_data_li[5]),
+    .waw_haz_o(csr_data_li[6]),
+    .csr_haz_o(csr_data_li[7]),
+    .mul_haz_o(csr_data_li[8]),
+    .flu_busy_o(csr_data_li[9]),
+    .lsu_busy_o(csr_data_li[10]),
+    .fpu_busy_o(csr_data_li[11]),
+    .br_miss_o(csr_data_li[12]),
+    .lsu_tl_o(csr_data_li[13]),
+    .lsu_wait_o(csr_data_li[14]),
+    .amo_flush_o(csr_data_li[15]),
+    .csr_flush_o(csr_data_li[16]),
+    .exception_o(csr_data_li[17]),
+    .cmt_haz_o(csr_data_li[18]),
+    .unknown_o(csr_data_li[19])
+  );
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
@@ -312,12 +384,6 @@ module top_zynq
    logic [64-1:0] axi_awaddr, axi_araddr;
    assign m00_axi_awaddr = (axi_awaddr[0+:32] ^ 32'h8000_0000) + csr_data_lo[2];
    assign m00_axi_araddr = (axi_araddr[0+:32] ^ 32'h8000_0000) + csr_data_lo[2];
-
-   // BlackParrot reset signal is connected to a CSR (along with
-   // the AXI interface reset) so that a regression can be launched
-   // without having to reload the bitstream
-   wire resetn_li = csr_data_lo[0][0] & s01_axi_aresetn;
-   wire core_resetn_li = csr_data_lo[3][0] & s01_axi_aresetn;
 
    // AXI4 to AXI3 stiching
    assign m00_axi_awid[5] = '0;

@@ -12,8 +12,10 @@
 #include <bitset>
 #include <cstdint>
 #include <iostream>
+#ifdef FPGA
 #include <fstream>
 #include <thread>
+#endif
 
 #include "bp_zynq_pl.h"
 
@@ -27,11 +29,15 @@
 void nbf_load(bp_zynq_pl *zpl, char *);
 bool decode_bp_output(bp_zynq_pl *zpl, int data);
 void report(bp_zynq_pl *zpl, char *);
+#ifdef FPGA
 void monitor(bp_zynq_pl *zpl, char *);
 bool run = true;
+#endif
 
 const char* metrics[] = {
-  "mcycle", "minstret"
+  "mcycle", "minstret", "fe_wait", "is_busy", "sb_full", "br_haz", "waw_haz", "csr_haz",
+  "mul_haz", "flu_busy", "lsu_busy", "fpu_busy", "br_miss", "lsu_tl", "lsu_wait",
+  "amo_flush", "csr_flush", "exception", "cmt_haz", "unknown"
 };
 
 const char* samples[] = {
@@ -199,7 +205,8 @@ int main(int argc, char **argv) {
   bsg_pr_info("ps.cpp: reading mtimecmp\n");
   assert(zpl->axil_read(0xA0000000U + 0x2004000) == y + 1);
 
-  bsg_pr_info("ps.cpp: beginning nbf load\n");
+  printf("argc: %d\n", argc);
+  bsg_pr_info("ps.cpp: beginning nbf load: %s\n", argv[1]);
   nbf_load(zpl, argv[1]);
   bsg_pr_info("ps.cpp: finished nbf load\n");
 
@@ -222,7 +229,9 @@ int main(int argc, char **argv) {
   unsigned long long mtime_start = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
   bsg_pr_info("ps.cpp: polling i/o\n");
 
+#ifdef FPGA
   std::thread t(monitor, zpl, argv[1]);
+#endif
   while (1) {
     // keep reading as long as there is data
     data = zpl->axil_read(0x14 + GP0_ADDR_BASE);
@@ -232,8 +241,10 @@ int main(int argc, char **argv) {
     } else if (done)
       break;
   }
+#ifdef FPGA
   run = false;
   t.join();
+#endif
 
   unsigned long long mcycle_stop = get_counter_64(zpl,0x2C + GP0_ADDR_BASE);
   unsigned long long minstret_stop = get_counter_64(zpl,0x34 + GP0_ADDR_BASE);
@@ -431,6 +442,7 @@ void report(bp_zynq_pl *zpl, char* nbf_filename) {
   else printf("Cannot open report file: %s\n", filename);
 }
 
+#ifdef FPGA
 void monitor(bp_zynq_pl *zpl, char* nbf_filename) {
 
   char filename[100];
@@ -468,3 +480,4 @@ void monitor(bp_zynq_pl *zpl, char* nbf_filename) {
   }
   else printf("Cannot open ipc file: %s\n", filename);
 }
+#endif
