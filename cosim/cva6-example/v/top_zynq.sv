@@ -11,7 +11,7 @@ module top_zynq
 
      // needs to be updated to fit all addresses used
      // by bsg_zynq_pl_shell read_locs_lp (update in top.v as well)
-     , parameter integer C_S00_AXI_ADDR_WIDTH   = 8
+     , parameter integer C_S00_AXI_ADDR_WIDTH   = 9
      , parameter integer C_S01_AXI_DATA_WIDTH   = 64
      // the ARM AXI S01 interface drops the top two bits
      , parameter integer C_S01_AXI_ADDR_WIDTH   = 64
@@ -152,12 +152,99 @@ module top_zynq
 
    `define COREPATH ariane.i_ariane
 
-   localparam csr_num_lp = 20;
+   localparam csr_num_lp = 37;
    logic [csr_num_lp-1:0][64-1:0] csr_data_li;
 
    assign csr_data_li[0] = ariane.i_ariane.csr_regfile_i.cycle_q[0+:64];
    assign csr_data_li[1] = ariane.i_ariane.csr_regfile_i.instret_q[0+:64];
 
+  ariane_issue_profiler #(
+    .width_p(64)
+  ) i_profiler (
+    .clk_i (s01_axi_aclk),
+    .reset_i (~core_resetn_li),
+
+    .instr_qeueu_valid_i(`COREPATH.i_frontend.fetch_entry_valid_o),
+    .instr_queue_ready_i(`COREPATH.i_frontend.i_instr_queue.ready_o),
+    .fe_bp_valid_i(`COREPATH.i_frontend.bp_valid),
+    .fe_replay_i(`COREPATH.i_frontend.replay),
+    .fe_realign_bubble_i(`COREPATH.i_frontend.icache_valid_q & ~(|`COREPATH.i_frontend.instruction_valid)),
+
+    .icache_valid_i(`COREPATH.i_frontend.icache_dreq_i.valid),
+    .icache_ready_i(`COREPATH.i_frontend.icache_dreq_i.ready),
+    .icache_flush_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.flush_d),
+    .icache_rtrn_vld_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.mem_rtrn_vld_i),
+    .icache_hit_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.hit),
+    .icache_state_q_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_q),
+    .icache_state_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_d),
+
+    .flush_unissued_instr_i(`COREPATH.controller_i.flush_unissued_instr_o),
+    .flush_ex_i(`COREPATH.controller_i.flush_ex_o),
+    .branch_mispredict_i(`COREPATH.controller_i.resolved_branch_i.is_mispredict),
+    .flush_amo_i(`COREPATH.controller_i.flush_commit_i),
+    .flush_csr_i(`COREPATH.controller_i.flush_csr_i),
+    .exception_i(`COREPATH.controller_i.ex_valid_i | `COREPATH.controller_i.eret_i),
+
+    .is_valid_i(`COREPATH.issue_stage_i.decoded_instr_valid_i),
+    .is_ack_i(`COREPATH.issue_stage_i.decoded_instr_ack_o),
+    .is_unresolved_branch_i(`COREPATH.issue_stage_i.i_scoreboard.unresolved_branch_i),
+    .is_sb_full_i(`COREPATH.issue_stage_i.i_scoreboard.issue_full),
+    .is_ro_mul_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.mult_valid_q
+                      & (`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu != MULT)),
+    .is_ro_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.stall),
+    .is_ro_fubusy_i(`COREPATH.issue_stage_i.i_issue_read_operands.fu_busy),
+    .is_instr_i(`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i),
+    .is_rd_clobber_gpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_gpr_i),
+    .is_rd_clobber_fpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_fpr_i),
+    .is_forward_rs1_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs1),
+    .is_forward_rs2_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs2),
+    .is_forward_rs3_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs3),
+    .is_forward_rd_i(|`COREPATH.issue_stage_i.i_scoreboard.rd_fwd_req),
+
+    .lsu_ctrl_i(`COREPATH.ex_stage_i.lsu_i.lsu_ctrl),
+    .pop_ld_i(`COREPATH.ex_stage_i.lsu_i.pop_ld),
+    .ld_done_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.valid_o),
+    .ld_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.state_q),
+    .st_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_store_unit.state_q),
+
+    .iq_full_o           (csr_data_li[2]),
+    .ic_invl_o           (csr_data_li[3]),
+    .ic_miss_o           (csr_data_li[4]),
+    .ic_flush_o          (csr_data_li[5]),
+    .ic_atrans_o         (csr_data_li[6]),
+    .bp_haz_o            (csr_data_li[7]),
+    .ireplay_o           (csr_data_li[8]),
+    .realign_o           (csr_data_li[9]),
+    .sb_full_o           (csr_data_li[10]),
+    .waw_flu_o           (csr_data_li[11]),
+    .waw_ld_pipe_o       (csr_data_li[12]),
+    .waw_ld_grant_o      (csr_data_li[13]),
+    .waw_ld_pgoff_o      (csr_data_li[14]),
+    .waw_dcache_o        (csr_data_li[15]),
+    .waw_fpu_o           (csr_data_li[16]),
+    .waw_reorder_o       (csr_data_li[17]),
+    .raw_flu_o           (csr_data_li[18]),
+    .raw_ld_pipe_o       (csr_data_li[19]),
+    .raw_ld_grant_o      (csr_data_li[20]),
+    .raw_ld_pgoff_o      (csr_data_li[21]),
+    .raw_dcache_o        (csr_data_li[22]),
+    .raw_fpu_o           (csr_data_li[23]),
+    .br_haz_o            (csr_data_li[24]),
+    .mul_haz_o           (csr_data_li[25]),
+    .flu_busy_o          (csr_data_li[26]),
+    .lsu_busy_ld_grant_o (csr_data_li[27]),
+    .lsu_busy_ld_pgoff_o (csr_data_li[28]),
+    .lsu_busy_st_buffer_o(csr_data_li[29]),
+    .lsu_busy_other_o    (csr_data_li[30]),
+    .fpu_busy_o          (csr_data_li[31]),
+    .br_miss_o           (csr_data_li[32]),
+    .amo_flush_o         (csr_data_li[33]),
+    .csr_flush_o         (csr_data_li[34]),
+    .exception_o         (csr_data_li[35]),
+    .unknown_o           (csr_data_li[36])
+  );
+
+/*
   ariane_stall_profiler #(
     .width_p(64)
   ) i_profiler (
@@ -223,7 +310,7 @@ module top_zynq
     .cmt_haz_o(csr_data_li[18]),
     .unknown_o(csr_data_li[19])
   );
-
+*/
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
    logic [127:0] mem_profiler_r;

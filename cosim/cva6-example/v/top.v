@@ -7,7 +7,7 @@ module top
   #(
     // Parameters of Axi Slave Bus Interface S00_AXI
     parameter integer C_S00_AXI_DATA_WIDTH = 32
-    , parameter integer C_S00_AXI_ADDR_WIDTH = 8
+    , parameter integer C_S00_AXI_ADDR_WIDTH = 9
     , parameter integer C_S01_AXI_DATA_WIDTH = 64
     , parameter integer C_S01_AXI_ADDR_WIDTH = 64
     , parameter integer C_M00_AXI_DATA_WIDTH = 64
@@ -280,7 +280,7 @@ module top
    localparam axi_addr_width_p = 32;
    localparam axi_data_width_p = 64;
    localparam axi_strb_width_p = axi_data_width_p >> 3;
-   localparam axi_burst_len_p = 8;
+   localparam axi_burst_len_p = (ariane_pkg::ICACHE_LINE_WIDTH)/axi_data_width_p;
 
    wire                                 m00_axi_aclk = s00_axi_aclk;
    wire                                 m00_axi_aresetn = s00_axi_aresetn;

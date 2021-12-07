@@ -35,9 +35,16 @@ bool run = true;
 #endif
 
 const char* metrics[] = {
-  "mcycle", "minstret", "fe_wait", "is_busy", "sb_full", "br_haz", "waw_haz", "csr_haz",
-  "mul_haz", "flu_busy", "lsu_busy", "fpu_busy", "br_miss", "lsu_tl", "lsu_wait",
-  "amo_flush", "csr_flush", "exception", "cmt_haz", "unknown"
+  "mcycle", "minstret",
+  "iq_full", "ic_invl", "ic_miss", "ic_flush", "ic_atrans",
+  "bp_haz", "ireplay", "realign", "sb_full",
+  "waw_flu", "waw_ld_pipe", "waw_ld_grant", "waw_ld_pgoff", "waw_dcache",
+  "waw_fpu", "waw_reorder", "raw_flu",
+  "raw_ld_pipe", "raw_ld_grant", "raw_ld_pgoff", "raw_dcache",
+  "raw_fpu", "br_haz", "mul_haz", "flu_busy",
+  "lsu_busy_ld_grant", "lsu_busy_ld_pgoff",
+  "lsu_busy_st_buffer", "lsu_busy_other",
+  "fpu_busy", "br_miss", "amo_flush", "csr_flush", "exception", "unknown"
 };
 
 const char* samples[] = {
