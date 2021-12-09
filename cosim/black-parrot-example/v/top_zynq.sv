@@ -9,7 +9,7 @@ module top_zynq
  import bp_common_pkg::*;
  import bp_be_pkg::*;
  import bp_me_pkg::*;
- #(parameter bp_params_e bp_params_p = e_bp_default_cfg
+ #(parameter bp_params_e bp_params_p = e_bp_multicore_1_cfg
    `declare_bp_proc_params(bp_params_p)
 
    , localparam uce_mem_data_width_lp = `BSG_MAX(icache_fill_width_p, dcache_fill_width_p)
@@ -216,8 +216,10 @@ module top_zynq
                        , mem_profiler_r[95:64]
                        , mem_profiler_r[63:32]
                        , mem_profiler_r[31:0]
-                       , blackparrot.unicore.unicore_lite.core_minimal.be.calculator.pipe_sys.csr.minstret_lo[63:32]
-                       , blackparrot.unicore.unicore_lite.core_minimal.be.calculator.pipe_sys.csr.minstret_lo[31:0]}
+                       , 32'b00
+                       , 32'b00}
+                       //, blackparrot.unicore.unicore_lite.core_minimal.be.calculator.pipe_sys.csr.minstret_lo[63:32]
+                       //, blackparrot.unicore.unicore_lite.core_minimal.be.calculator.pipe_sys.csr.minstret_lo[31:0]}
                      )
 
         ,.pl_to_ps_fifo_data_i (pl_to_ps_fifo_data_li)
@@ -516,7 +518,7 @@ module top_zynq
       ,.data_o(mem_profiler_r)
       );
 
-   bp_unicore_axi #
+   bp_multicore_axi #
      (.bp_params_p(bp_params_p)
       ,.axil_addr_width_p(bp_axil_addr_width_lp)
       ,.axil_data_width_p(bp_axil_data_width_lp)
