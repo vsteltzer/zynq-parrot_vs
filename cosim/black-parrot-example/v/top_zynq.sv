@@ -21,7 +21,7 @@ module top_zynq
 
    // needs to be updated to fit all addresses used
    // by bsg_zynq_pl_shell read_locs_lp (update in top.v as well)
-   , parameter integer C_S00_AXI_ADDR_WIDTH   = 6
+   , parameter integer C_S00_AXI_ADDR_WIDTH   = 9
    , parameter integer C_S01_AXI_DATA_WIDTH   = 32
    // the ARM AXI S01 interface drops the top two bits
    , parameter integer C_S01_AXI_ADDR_WIDTH   = 30
@@ -148,6 +148,127 @@ module top_zynq
    localparam bp_axi_addr_width_lp  = 32;
    localparam bp_axi_data_width_lp  = 64;
 
+   `define COREPATH blackparrot.unicore.unicore_lite.core_minimal
+
+   localparam counter_num_p = 35;
+   logic [counter_num_p-1:0][64-1:0] csr_data_li;
+
+   bp_stall_counters
+    #(.bp_params_p(bp_params_p)
+     ,.width_p(64)
+     )
+     stall_counters
+     (.clk_i(s01_axi_aclk)
+     ,.reset_i(bp_reset_li)
+     ,.freeze_i(`COREPATH.be.calculator.pipe_sys.csr.cfg_bus_cast_i.freeze)
+
+     ,.fe_state_n_i(`COREPATH.fe.state_n)
+     ,.fe_queue_ready_i(`COREPATH.fe.fe_queue_ready_i)
+     ,.fe_icache_ready_i(`COREPATH.fe.icache.ready_o)
+
+     ,.if2_v_i(`COREPATH.fe.v_if2_r)
+     ,.br_ovr_i(`COREPATH.fe.pc_gen.ovr_taken)
+     ,.ret_ovr_i(`COREPATH.fe.pc_gen.ovr_ret)
+     ,.icache_data_v_i(`COREPATH.fe.icache.data_v_o)
+     ,.fe_cmd_nonattaboy_i(`COREPATH.fe.fe_cmd_yumi_o & ~`COREPATH.fe.attaboy_v)
+
+     ,.fe_cmd_fence_i(`COREPATH.be.director.suppress_iss_o)
+     ,.fe_queue_empty_i(~`COREPATH.be.scheduler.fe_queue_fifo.fe_queue_v_o)
+     ,.mispredict_i(`COREPATH.be.director.npc_mismatch_v)
+
+     ,.dcache_rollback_i(`COREPATH.be.scheduler.commit_pkt_cast_i.dcache_miss)
+     ,.dcache_miss_i(~`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
+     ,.dcache_fail_i(`COREPATH.be.calculator.pipe_sys.csr.retire_pkt_cast_i.exception.dcache_fail)
+
+     ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
+     ,.long_haz_i(`COREPATH.be.detector.long_haz_v)
+
+     ,.data_haz_i(`COREPATH.be.detector.data_haz_v)
+     ,.aux_dep_i((`COREPATH.be.detector.dep_status_r[0].aux_iwb_v
+                | `COREPATH.be.detector.dep_status_r[0].aux_fwb_v
+                ) & `COREPATH.be.detector.data_haz_v
+               )
+     ,.load_dep_i((`COREPATH.be.detector.dep_status_r[0].emem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].fmem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[1].fmem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].emem_fwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].fmem_fwb_v
+                   | `COREPATH.be.detector.dep_status_r[1].fmem_fwb_v
+                   ) & `COREPATH.be.detector.data_haz_v
+                  )
+     ,.mul_dep_i((`COREPATH.be.detector.dep_status_r[0].mul_iwb_v
+                  | `COREPATH.be.detector.dep_status_r[1].mul_iwb_v
+                  | `COREPATH.be.detector.dep_status_r[2].mul_iwb_v
+                  ) & `COREPATH.be.detector.data_haz_v
+                 )
+     ,.fma_dep_i((`COREPATH.be.detector.dep_status_r[0].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[1].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[2].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[3].fma_fwb_v
+                ) & `COREPATH.be.detector.data_haz_v
+               )
+     ,.sb_iraw_dep_i((`COREPATH.be.detector.irs1_sb_raw_haz_v
+                    | `COREPATH.be.detector.irs2_sb_raw_haz_v
+                    ) & `COREPATH.be.detector.data_haz_v
+                   )
+     ,.sb_fraw_dep_i((`COREPATH.be.detector.frs1_sb_raw_haz_v
+                    | `COREPATH.be.detector.frs2_sb_raw_haz_v
+                    | `COREPATH.be.detector.frs3_sb_raw_haz_v
+                    ) & `COREPATH.be.detector.data_haz_v
+                   )
+     ,.sb_iwaw_dep_i(`COREPATH.be.detector.ird_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
+     ,.sb_fwaw_dep_i(`COREPATH.be.detector.frd_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
+
+     ,.struct_haz_i(`COREPATH.be.detector.struct_haz_v)
+     ,.long_busy_i(~`COREPATH.be.detector.long_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.long_i_busy_i((~`COREPATH.be.calculator.pipe_long.idiv_ready_and_lo
+                     | (`COREPATH.be.calculator.pipe_long.v_li & `COREPATH.be.calculator.pipe_long.decode.late_iwb_v)
+                    ) & `COREPATH.be.detector.dispatch_pkt_cast_i.decode.late_iwb_v
+                   )
+     ,.long_f_busy_i((~`COREPATH.be.calculator.pipe_long.fdiv_ready_lo
+                     | (`COREPATH.be.calculator.pipe_long.v_li & `COREPATH.be.calculator.pipe_long.decode.late_fwb_v)
+                    ) & `COREPATH.be.detector.dispatch_pkt_cast_i.decode.late_fwb_v
+                   )
+
+     ,.commit_pkt_i(`COREPATH.be.calculator.commit_pkt_cast_o)
+
+     ,.mcycle_o               (csr_data_li[0])
+     ,.minstret_o             (csr_data_li[1])
+     ,.fe_wait_o              (csr_data_li[2])
+     ,.fe_queue_full_o        (csr_data_li[3])
+     ,.icache_rollback_o      (csr_data_li[4])
+     ,.icache_miss_o          (csr_data_li[5])
+     ,.branch_override_o      (csr_data_li[6])
+     ,.ret_override_o         (csr_data_li[7])
+     ,.fe_cmd_o               (csr_data_li[8])
+     ,.fe_cmd_fence_o         (csr_data_li[9])
+     ,.mispredict_o           (csr_data_li[10])
+     ,.control_haz_o          (csr_data_li[11])
+     ,.long_haz_o             (csr_data_li[12])
+     ,.data_haz_o             (csr_data_li[13])
+     ,.aux_dep_o              (csr_data_li[14])
+     ,.load_dep_o             (csr_data_li[15])
+     ,.mul_dep_o              (csr_data_li[16])
+     ,.fma_dep_o              (csr_data_li[17])
+     ,.sb_iraw_dep_o          (csr_data_li[18])
+     ,.sb_fraw_dep_o          (csr_data_li[19])
+     ,.sb_iwaw_dep_o          (csr_data_li[20])
+     ,.sb_fwaw_dep_o          (csr_data_li[21])
+     ,.struct_haz_o           (csr_data_li[22])
+     ,.long_i_busy_o          (csr_data_li[23])
+     ,.long_f_busy_o          (csr_data_li[24])
+     ,.long_if_busy_o         (csr_data_li[25])
+     ,.dcache_rollback_o      (csr_data_li[26])
+     ,.dcache_miss_o          (csr_data_li[27])
+     ,.dcache_fail_o          (csr_data_li[28])
+     ,.unknown_o              (csr_data_li[29])
+     ,.mem_instr_o            (csr_data_li[30])
+     ,.aux_instr_o            (csr_data_li[31])
+     ,.fma_instr_o            (csr_data_li[32])
+     ,.ilong_instr_o          (csr_data_li[33])
+     ,.flong_instr_o          (csr_data_li[34])
+     );
+
    logic [2:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
    logic                                        pl_to_ps_fifo_v_li, pl_to_ps_fifo_ready_lo;
@@ -174,7 +295,7 @@ module top_zynq
    logic                                        bp_axi_rready;
 
    localparam debug_lp = 0;
-   localparam memory_upper_limit_lp = 120*1024*1024;
+   localparam memory_upper_limit_lp = 241*1024*1024;
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
@@ -201,7 +322,7 @@ module top_zynq
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
-      ,.num_regs_pl_to_ps_p(2+4)
+      ,.num_regs_pl_to_ps_p(4+(2*counter_num_p))
       ,.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH)
       ,.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
       ) zps
@@ -221,13 +342,12 @@ module top_zynq
         // to increment the counters.
         //
 
-        ,.csr_data_i({ mem_profiler_r[127:96]
+        ,.csr_data_i({ csr_data_li
+                       , mem_profiler_r[127:96]
                        , mem_profiler_r[95:64]
                        , mem_profiler_r[63:32]
                        , mem_profiler_r[31:0]
-                       , minstret_lo[63:32]
-                       , minstret_lo[31:0]}
-                     )
+                     })
 
         ,.pl_to_ps_fifo_data_i (pl_to_ps_fifo_data_li)
         ,.pl_to_ps_fifo_v_i    (pl_to_ps_fifo_v_li)
@@ -263,7 +383,7 @@ module top_zynq
    // Add user logic here
 
    `declare_bsg_cache_dma_pkt_s(caddr_width_p);
-   bsg_cache_dma_pkt_s dma_pkt_lo;
+   bsg_cache_dma_pkt_s         dma_pkt_lo;
    logic                       dma_pkt_v_lo, dma_pkt_yumi_li;
    logic [l2_fill_width_p-1:0] dma_data_lo;
    logic                       dma_data_v_lo, dma_data_yumi_li;

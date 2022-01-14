@@ -82,6 +82,9 @@ void _xlnk_reset();
 #include <string>
 #include <fstream>
 #include <iostream>
+#include "bsg_argparse.h"
+#include "bsg_printing.h"
+
 using namespace std;
 
 class bp_zynq_pl {
