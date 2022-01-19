@@ -18,6 +18,9 @@ export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
 export SIM_DEFINES  += -DFPGA
 
+# Set to MULTICORE for different BP configs
+export SV_DEFINES ?=
+
 #SIM_DEFINES  +=-DSKIP_DRAM_TESTING
 
 CFLAGS += -DZYNQ_PL_DEBUG

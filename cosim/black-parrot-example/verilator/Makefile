@@ -16,6 +16,9 @@ export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
 export SIM_DEFINES  += -DVERILATOR
 
+# Set to +define+MULTICORE for other BP configs
+VV_DEFS ?= 
+
 SKIP_DRAM ?= -DSKIP_DRAM_TESTING
 
 #CFLAGS += -DZYNQ_PL_DEBUG

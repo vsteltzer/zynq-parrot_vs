@@ -148,7 +148,11 @@ module top_zynq
    localparam bp_axi_addr_width_lp  = 32;
    localparam bp_axi_data_width_lp  = 64;
 
-   `define COREPATH blackparrot.unicore.unicore_lite.core_minimal
+   `ifdef MULTICORE
+      `define COREPATH blackparrot.w.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal
+   `else
+      `define COREPATH blackparrot.w.unicore.unicore_lite.core_minimal
+   `endif
 
    localparam counter_num_p = 35;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
@@ -220,7 +224,7 @@ module top_zynq
      ,.sb_fwaw_dep_i(`COREPATH.be.detector.frd_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
 
      ,.struct_haz_i(`COREPATH.be.detector.struct_haz_v)
-     ,.long_busy_i(~`COREPATH.be.detector.long_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.long_busy_i(1'b0/*~`COREPATH.be.detector.long_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v*/)
      ,.long_i_busy_i((~`COREPATH.be.calculator.pipe_long.idiv_ready_and_lo
                      | (`COREPATH.be.calculator.pipe_long.v_li & `COREPATH.be.calculator.pipe_long.decode.late_iwb_v)
                     ) & `COREPATH.be.detector.dispatch_pkt_cast_i.decode.late_iwb_v
@@ -300,12 +304,6 @@ module top_zynq
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
    logic [127:0] mem_profiler_r;
-
-   logic [63:0] minstret_lo;
-   if (multicore_p)
-     assign minstret_lo = blackparrot.m.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal.be.calculator.pipe_sys.csr.minstret_lo;
-   else
-     assign minstret_lo = blackparrot.u.unicore.unicore_lite.core_minimal.be.calculator.pipe_sys.csr.minstret_lo;
 
    // Connect Shell to AXI Bus Interface S00_AXI
    bsg_zynq_pl_shell #
