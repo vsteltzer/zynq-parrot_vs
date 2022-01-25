@@ -1,9 +1,3 @@
-//
-// this is an example of "host code" that can either run in cosim or on the PS
-// we can use the same C host code and
-// the API we provide abstracts away the
-// communication plumbing differences.
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <locale.h>
@@ -18,6 +12,8 @@
 #endif
 
 #include "bp_zynq_pl.h"
+#include "bsg_printing.h"
+#include "bsg_argparse.h"
 
 #define FREE_DRAM 0
 #define DRAM_ALLOCATE_SIZE 241 * 1024 * 1024
@@ -51,14 +47,14 @@ const char* samples[] = {
   "mcycle", "minstret"
 };
 
-inline unsigned long long get_counter_64(bp_zynq_pl *zpl, unsigned int addr) {
+inline uint64_t get_counter_64(bp_zynq_pl *zpl, uint64_t addr) {
   unsigned long long val;
   do {
-    unsigned int val_hi = zpl->axil_read(addr + 4);
-    unsigned int val_lo = zpl->axil_read(addr + 0);
-    unsigned int val_hi2 = zpl->axil_read(addr + 4);
+    uint32_t val_hi = zpl->axil_read(addr + 4);
+    uint32_t val_lo = zpl->axil_read(addr + 0);
+    uint32_t val_hi2 = zpl->axil_read(addr + 4);
     if (val_hi == val_hi2) {
-      val = ((unsigned long long)val_hi) << 32;
+      val = ((uint64_t)val_hi) << 32;
       val += val_lo;
       return val;
     } else
@@ -66,13 +62,13 @@ inline unsigned long long get_counter_64(bp_zynq_pl *zpl, unsigned int addr) {
   } while (1);
 }
 
-#ifdef VCS
+#ifndef VCS
+int main(int argc, char **argv) {
+#else
 extern "C" void cosim_main(char *argstr) {
   int argc = get_argc(argstr);
   char *argv[argc];
   get_argv(argstr, argc, argv);
-#else
-int main(int argc, char **argv) {
 #endif
   // this ensures that even with tee, the output is line buffered
   // so that we can see what is happening in real time
@@ -193,10 +189,10 @@ int main(int argc, char **argv) {
               "increase monotonically  (testing ARM GP1 connections)\n");
 
   for (int q = 0; q < 10; q++) {
-    int z = zpl->axil_read(0xA0000000U + 0x200bff8);
+    int z = zpl->axil_read(GP1_ADDR_BASE + 0x20000000U + 0x200bff8);
     // bsg_pr_dbg_ps("ps.cpp: %d%c",z,(q % 8) == 7 ? '\n' : ' ');
     // read second 32-bits
-    int z2 = zpl->axil_read(0xA0000000U + 0x200bff8 + 4);
+    int z2 = zpl->axil_read(GP1_ADDR_BASE + 0x20000000U + 0x200bff8 + 4);
     // bsg_pr_dbg_ps("ps.cpp: %d%c",z2,(q % 8) == 7 ? '\n' : ' ');
   }
 
@@ -204,13 +200,13 @@ int main(int argc, char **argv) {
               "(testing ARM GP1 connections)\n");
 
   bsg_pr_info("ps.cpp: reading mtimecmp\n");
-  int y = zpl->axil_read(0xA0000000U + 0x2004000);
+  int y = zpl->axil_read(GP1_ADDR_BASE + 0x20000000U + 0x2004000);
 
   bsg_pr_info("ps.cpp: writing mtimecmp\n");
-  zpl->axil_write(0xA0000000U + 0x2004000, y + 1, mask1);
+  zpl->axil_write(GP1_ADDR_BASE + 0x20000000U + 0x2004000, y + 1, mask1);
 
   bsg_pr_info("ps.cpp: reading mtimecmp\n");
-  assert(zpl->axil_read(0xA0000000U + 0x2004000) == y + 1);
+  assert(zpl->axil_read(GP1_ADDR_BASE + 0x20000000U + 0x2004000) == y + 1);
 
   printf("argc: %d\n", argc);
   bsg_pr_info("ps.cpp: beginning nbf load: %s\n", argv[1]);
@@ -233,7 +229,7 @@ int main(int argc, char **argv) {
 
   unsigned long long mcycle_start = get_counter_64(zpl,0x2C + GP0_ADDR_BASE);
   unsigned long long minstret_start = get_counter_64(zpl,0x34 + GP0_ADDR_BASE);
-  unsigned long long mtime_start = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
+  unsigned long long mtime_start = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000U + 0x200bff8);
   bsg_pr_info("ps.cpp: polling i/o\n");
 
 #ifdef FPGA
@@ -255,7 +251,7 @@ int main(int argc, char **argv) {
 
   unsigned long long mcycle_stop = get_counter_64(zpl,0x2C + GP0_ADDR_BASE);
   unsigned long long minstret_stop = get_counter_64(zpl,0x34 + GP0_ADDR_BASE);
-  unsigned long long mtime_stop = get_counter_64(zpl, 0xA0000000 + 0x200bff8);
+  unsigned long long mtime_stop = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000U + 0x200bff8);
   unsigned long long mcycle_delta = mcycle_stop - mcycle_start;
   unsigned long long minstret_delta = minstret_stop - minstret_start;
   unsigned long long mtime_delta = mtime_stop - mtime_start;
@@ -356,35 +352,29 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
 
       if (nbf[1] >= 0x80000000) {
         if (nbf[0] == 0x3) {
-          data = nbf[2];
-          nbf[2] = nbf[2] >> 32;
-          zpl->axil_write(nbf[1], data, 0xf);
-          data = nbf[2];
-          zpl->axil_write(nbf[1] + 4, data, 0xf);
+          zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1], nbf[2], 0xf);
+          zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1] + 4, nbf[2] >> 32, 0xf);
         }
         else if (nbf[0] == 0x2) {
-          zpl->axil_write(nbf[1], nbf[2], 0xf);
+          zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1], nbf[2], 0xf);
         }
         else if (nbf[0] == 0x1) {
           int offset = nbf[1] % 4;
           int shift = 2 * offset;
-          data = zpl->axil_read(nbf[1] - offset);
+          data = zpl->axil_read(GP1_ADDR_BASE - 0x80000000 + nbf[1] - offset);
           data = data & rotl((uint32_t)0xffff0000,shift) + nbf[2] & ((uint32_t)0x0000ffff << shift);
-          zpl->axil_write(nbf[1] - offset, data, 0xf);
+          zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1] - offset, data, 0xf);
         }
         else {
           int offset = nbf[1] % 4;
           int shift = 2 * offset;
-          data = zpl->axil_read(nbf[1] - offset);
+          data = zpl->axil_read(GP1_ADDR_BASE - 0x80000000 + nbf[1] - offset);
           data = data & rotl((uint32_t)0xffffff00,shift) + nbf[2] & ((uint32_t)0x000000ff << shift);
-          zpl->axil_write(nbf[1] - offset, data, 0xf);
+          zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1] - offset, data, 0xf);
         }
       }
       else {
-        address = nbf[1];
-        address = address + 0xA0000000;
-        data = nbf[2];
-        zpl->axil_write(address, data, 0xf);
+        zpl->axil_write(GP1_ADDR_BASE + 0x20000000 + nbf[1], nbf[2], 0xf);
       }
     } else if (nbf[0] == 0xfe) {
       continue;
@@ -420,7 +410,6 @@ bool decode_bp_output(bp_zynq_pl *zpl, int data) {
     bsg_pr_err("ps.cpp: Errant write to %x\n", address);
     return false;
   }
-  // TODO: Need to implement logic for bp io_read
   else {
     bsg_pr_err("ps.cpp: Unsupported read (%x)\n", data);
     return false;

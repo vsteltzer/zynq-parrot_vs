@@ -17,18 +17,20 @@ module top_zynq
    // but we set them to make expectations consistent
 
    // Parameters of Axi Slave Bus Interface S00_AXI
-   , parameter integer C_S00_AXI_DATA_WIDTH   = 32
-
+   , parameter integer C_S00_AXI_ADDR_WIDTH   = 9
    // needs to be updated to fit all addresses used
    // by bsg_zynq_pl_shell read_locs_lp (update in top.v as well)
-   , parameter integer C_S00_AXI_ADDR_WIDTH   = 9
-   , parameter integer C_S01_AXI_DATA_WIDTH   = 32
+   , parameter integer C_S00_AXI_DATA_WIDTH   = 32
+
    // the ARM AXI S01 interface drops the top two bits
    , parameter integer C_S01_AXI_ADDR_WIDTH   = 30
-   , parameter integer C_M00_AXI_DATA_WIDTH   = 64
+   , parameter integer C_S01_AXI_DATA_WIDTH   = 32
+
    , parameter integer C_M00_AXI_ADDR_WIDTH   = 32
-   , parameter integer C_M01_AXI_DATA_WIDTH   = 32
+   , parameter integer C_M00_AXI_DATA_WIDTH   = 64
+
    , parameter integer C_M01_AXI_ADDR_WIDTH   = 32
+   , parameter integer C_M01_AXI_DATA_WIDTH   = 32
    )
   (// Ports of Axi Slave Bus Interface S00_AXI
    input wire                                    s00_axi_aclk

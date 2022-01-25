@@ -111,7 +111,7 @@ public:
     volatile int *ptr0 =
         (int *)mmap(addr0, GP0_ADDR_SIZE_BYTES, PROT_READ | PROT_WRITE,
                     MAP_SHARED, fd, (intptr_t)addr0);
-    assert(ptr0 == addr0);
+    assert(ptr0 == (int*)addr0);
 
     // assert(ptr0 != ((void *) -1));
     // if (ptr0 != addr0)
@@ -125,7 +125,7 @@ public:
     volatile int *ptr1 =
         (int *)mmap(addr1, GP1_ADDR_SIZE_BYTES, PROT_READ | PROT_WRITE,
                     MAP_SHARED, fd, (intptr_t)addr1);
-    assert(ptr1 == addr1);
+    assert(ptr1 == (int*)addr1);
 
     // assert(ptr1 != ((void *) -1));
     // if (ptr1 != addr1)

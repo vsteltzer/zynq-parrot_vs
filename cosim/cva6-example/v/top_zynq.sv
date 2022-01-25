@@ -6,17 +6,14 @@ module top_zynq
      // NOTE these parameters are usually overridden by the parent module (top.v)
      // but we set them to make expectations consistent
 
-     // Parameters of Axi Slave Bus Interface S00_AXI
-     parameter integer C_S00_AXI_DATA_WIDTH   = 32
+     parameter integer C_S00_AXI_ADDR_WIDTH     = 9
+     , parameter integer C_S00_AXI_DATA_WIDTH   = 32
 
-     // needs to be updated to fit all addresses used
-     // by bsg_zynq_pl_shell read_locs_lp (update in top.v as well)
-     , parameter integer C_S00_AXI_ADDR_WIDTH   = 9
+     , parameter integer C_S01_AXI_ADDR_WIDTH   = 32
      , parameter integer C_S01_AXI_DATA_WIDTH   = 64
-     // the ARM AXI S01 interface drops the top two bits
-     , parameter integer C_S01_AXI_ADDR_WIDTH   = 64
-     , parameter integer C_M00_AXI_DATA_WIDTH   = 64
+
      , parameter integer C_M00_AXI_ADDR_WIDTH   = 32
+     , parameter integer C_M00_AXI_DATA_WIDTH   = 64
      )
    (
     // AXI4-Lite Slave bus
@@ -43,100 +40,104 @@ module top_zynq
     ,input wire                                  s00_axi_rready
 
     // AXI4 Slave bus
-    ,input wire                                s01_axi_aclk
-    ,input wire                                s01_axi_aresetn
-    ,input wire [C_S01_AXI_ADDR_WIDTH-1:0]     s01_axi_awaddr
-    ,input wire                                s01_axi_awvalid
-    ,output wire                               s01_axi_awready
-    ,input wire [3:0]                          s01_axi_awid
-    ,input wire                                s01_axi_awlock
-    ,input wire [3:0]                          s01_axi_awcache
-    ,input wire [2:0]                          s01_axi_awprot
-    ,input wire [7:0]                          s01_axi_awlen
-    ,input wire [2:0]                          s01_axi_awsize
-    ,input wire [1:0]                          s01_axi_awburst
-    ,input wire [3:0]                          s01_axi_awqos
-    ,input wire                                s01_axi_awuser
+    ,input wire                                  s01_axi_aclk
+    ,input wire                                  s01_axi_aresetn
+    ,input wire [C_S01_AXI_ADDR_WIDTH-1:0]       s01_axi_awaddr
+    ,input wire                                  s01_axi_awvalid
+    ,output wire                                 s01_axi_awready
+    ,input wire [4:0]                            s01_axi_awid
+    ,input wire                                  s01_axi_awlock
+    ,input wire [3:0]                            s01_axi_awcache
+    ,input wire [2:0]                            s01_axi_awprot
+    ,input wire [7:0]                            s01_axi_awlen
+    ,input wire [2:0]                            s01_axi_awsize
+    ,input wire [1:0]                            s01_axi_awburst
+    ,input wire [3:0]                            s01_axi_awqos
+    ,input wire                                  s01_axi_awuser
 
-    ,input wire [C_S01_AXI_DATA_WIDTH-1:0]     s01_axi_wdata
-    ,input wire                                s01_axi_wvalid
-    ,output wire                               s01_axi_wready
-    ,input wire                                s01_axi_wlast
-    ,input wire [(C_S01_AXI_DATA_WIDTH/8)-1:0] s01_axi_wstrb
-    ,input wire                                s01_axi_wuser
+    ,input wire [C_S01_AXI_DATA_WIDTH-1:0]       s01_axi_wdata
+    ,input wire                                  s01_axi_wvalid
+    ,output wire                                 s01_axi_wready
+    ,input wire                                  s01_axi_wlast
+    ,input wire [(C_S01_AXI_DATA_WIDTH/8)-1:0]   s01_axi_wstrb
+    ,input wire                                  s01_axi_wuser
 
-    ,output wire                               s01_axi_bvalid
-    ,input wire                                s01_axi_bready
-    ,output wire [3:0]                         s01_axi_bid
-    ,output wire [1:0]                         s01_axi_bresp
-    ,output wire                               s01_axi_buser
+    ,output wire                                 s01_axi_bvalid
+    ,input wire                                  s01_axi_bready
+    ,output wire [4:0]                           s01_axi_bid
+    ,output wire [1:0]                           s01_axi_bresp
+    ,output wire                                 s01_axi_buser
 
-    ,input wire [C_S01_AXI_ADDR_WIDTH-1:0]     s01_axi_araddr
-    ,input wire                                s01_axi_arvalid
-    ,output wire                               s01_axi_arready
-    ,input wire [3:0]                          s01_axi_arid
-    ,input wire                                s01_axi_arlock
-    ,input wire [3:0]                          s01_axi_arcache
-    ,input wire [2:0]                          s01_axi_arprot
-    ,input wire [7:0]                          s01_axi_arlen
-    ,input wire [2:0]                          s01_axi_arsize
-    ,input wire [1:0]                          s01_axi_arburst
-    ,input wire [3:0]                          s01_axi_arqos
-    ,input wire                                s01_axi_aruser
+    ,input wire [C_S01_AXI_ADDR_WIDTH-1:0]       s01_axi_araddr
+    ,input wire                                  s01_axi_arvalid
+    ,output wire                                 s01_axi_arready
+    ,input wire [4:0]                            s01_axi_arid
+    ,input wire                                  s01_axi_arlock
+    ,input wire [3:0]                            s01_axi_arcache
+    ,input wire [2:0]                            s01_axi_arprot
+    ,input wire [7:0]                            s01_axi_arlen
+    ,input wire [2:0]                            s01_axi_arsize
+    ,input wire [1:0]                            s01_axi_arburst
+    ,input wire [3:0]                            s01_axi_arqos
+    ,input wire                                  s01_axi_aruser
 
-    ,output wire [C_S01_AXI_DATA_WIDTH-1:0]    s01_axi_rdata
-    ,output wire                               s01_axi_rvalid
-    ,input wire                                s01_axi_rready
-    ,output wire [3:0]                         s01_axi_rid
-    ,output wire                               s01_axi_rlast
-    ,output wire [1:0]                         s01_axi_rresp
-    ,output wire                               s01_axi_ruser
+    ,output wire [C_S01_AXI_DATA_WIDTH-1:0]      s01_axi_rdata
+    ,output wire                                 s01_axi_rvalid
+    ,input wire                                  s01_axi_rready
+    ,output wire [4:0]                           s01_axi_rid
+    ,output wire                                 s01_axi_rlast
+    ,output wire [1:0]                           s01_axi_rresp
+    ,output wire                                 s01_axi_ruser
 
-    // AXI3 Master bus
-    ,input wire                                 m00_axi_aclk
-    ,input wire                                 m00_axi_aresetn
-    ,output wire [C_M00_AXI_ADDR_WIDTH-1:0]     m00_axi_awaddr
-    ,output wire                                m00_axi_awvalid
-    ,input wire                                 m00_axi_awready
-    ,output wire [5:0]                          m00_axi_awid
-    ,output wire [1:0]                          m00_axi_awlock
-    ,output wire [3:0]                          m00_axi_awcache
-    ,output wire [2:0]                          m00_axi_awprot
-    ,output wire [3:0]                          m00_axi_awlen
-    ,output wire [2:0]                          m00_axi_awsize
-    ,output wire [1:0]                          m00_axi_awburst
-    ,output wire [3:0]                          m00_axi_awqos
+    // AXI4 Master bus
+    ,input wire                                  m00_axi_aclk
+    ,input wire                                  m00_axi_aresetn
+    ,output wire [C_M00_AXI_ADDR_WIDTH-1:0]      m00_axi_awaddr
+    ,output wire                                 m00_axi_awvalid
+    ,input wire                                  m00_axi_awready
+    ,output wire [4:0]                           m00_axi_awid
+    ,output wire                                 m00_axi_awlock
+    ,output wire [3:0]                           m00_axi_awcache
+    ,output wire [2:0]                           m00_axi_awprot
+    ,output wire [7:0]                           m00_axi_awlen
+    ,output wire [2:0]                           m00_axi_awsize
+    ,output wire [1:0]                           m00_axi_awburst
+    ,output wire [3:0]                           m00_axi_awqos
+    ,output wire                                 m00_axi_awuser
 
-    ,output wire [C_M00_AXI_DATA_WIDTH-1:0]     m00_axi_wdata
-    ,output wire                                m00_axi_wvalid
-    ,input wire                                 m00_axi_wready
-    ,output wire [5:0]                          m00_axi_wid
-    ,output wire                                m00_axi_wlast
-    ,output wire [(C_M00_AXI_DATA_WIDTH/8)-1:0] m00_axi_wstrb
+    ,output wire [C_M00_AXI_DATA_WIDTH-1:0]      m00_axi_wdata
+    ,output wire                                 m00_axi_wvalid
+    ,input wire                                  m00_axi_wready
+    ,output wire                                 m00_axi_wlast
+    ,output wire [(C_M00_AXI_DATA_WIDTH/8)-1:0]  m00_axi_wstrb
+    ,output wire                                 m00_axi_wuser
 
-    ,input wire                                 m00_axi_bvalid
-    ,output wire                                m00_axi_bready
-    ,input wire [5:0]                           m00_axi_bid
-    ,input wire [1:0]                           m00_axi_bresp
+    ,input wire                                  m00_axi_bvalid
+    ,output wire                                 m00_axi_bready
+    ,input wire [4:0]                            m00_axi_bid
+    ,input wire [1:0]                            m00_axi_bresp
+    ,input wire                                  m00_axi_buser
 
-    ,output wire [C_M00_AXI_ADDR_WIDTH-1:0]     m00_axi_araddr
-    ,output wire                                m00_axi_arvalid
-    ,input wire                                 m00_axi_arready
-    ,output wire [5:0]                          m00_axi_arid
-    ,output wire [1:0]                          m00_axi_arlock
-    ,output wire [3:0]                          m00_axi_arcache
-    ,output wire [2:0]                          m00_axi_arprot
-    ,output wire [3:0]                          m00_axi_arlen
-    ,output wire [2:0]                          m00_axi_arsize
-    ,output wire [1:0]                          m00_axi_arburst
-    ,output wire [3:0]                          m00_axi_arqos
+    ,output wire [C_M00_AXI_ADDR_WIDTH-1:0]      m00_axi_araddr
+    ,output wire                                 m00_axi_arvalid
+    ,input wire                                  m00_axi_arready
+    ,output wire [4:0]                           m00_axi_arid
+    ,output wire                                 m00_axi_arlock
+    ,output wire [3:0]                           m00_axi_arcache
+    ,output wire [2:0]                           m00_axi_arprot
+    ,output wire [7:0]                           m00_axi_arlen
+    ,output wire [2:0]                           m00_axi_arsize
+    ,output wire [1:0]                           m00_axi_arburst
+    ,output wire [3:0]                           m00_axi_arqos
+    ,output wire [5:0]                           m00_axi_aruser
 
-    ,input wire [C_M00_AXI_DATA_WIDTH-1:0]      m00_axi_rdata
-    ,input wire                                 m00_axi_rvalid
-    ,output wire                                m00_axi_rready
-    ,input wire [5:0]                           m00_axi_rid
-    ,input wire                                 m00_axi_rlast
-    ,input wire [1:0]                           m00_axi_rresp
+    ,input wire [C_M00_AXI_DATA_WIDTH-1:0]       m00_axi_rdata
+    ,input wire                                  m00_axi_rvalid
+    ,output wire                                 m00_axi_rready
+    ,input wire [4:0]                            m00_axi_rid
+    ,input wire                                  m00_axi_rlast
+    ,input wire [1:0]                            m00_axi_rresp
+    ,input wire                                  m00_axi_ruser
     );
 
    logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
@@ -244,73 +245,6 @@ module top_zynq
     .unknown_o           (csr_data_li[36])
   );
 
-/*
-  ariane_stall_profiler #(
-    .width_p(64)
-  ) i_profiler (
-    .clk_i (s01_axi_aclk),
-    .reset_i (~core_resetn_li),
-
-    .branch_mispredict_i(`COREPATH.controller_i.resolved_branch_i.is_mispredict),
-    .flush_amo_i(`COREPATH.controller_i.flush_commit_i),
-    .flush_csr_i(`COREPATH.controller_i.flush_csr_i),
-    .exception_i(`COREPATH.controller_i.ex_valid_i | `COREPATH.controller_i.eret_i),
-
-    .fe_bubble_i(~`COREPATH.i_frontend.fetch_entry_valid_o),
-
-    .is_valid_i(`COREPATH.issue_stage_i.decoded_instr_valid_i),
-    .is_ack_i(`COREPATH.issue_stage_i.decoded_instr_ack_o),
-    .is_unresolved_branch_i(`COREPATH.issue_stage_i.i_scoreboard.unresolved_branch_i),
-    .is_sb_full_i(`COREPATH.issue_stage_i.i_scoreboard.issue_full),
-    .is_ro_mul_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.mult_valid_q
-                      & (`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu != ariane_pkg::MULT)),
-    .is_ro_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.stall),
-    .is_ro_fubusy_i(`COREPATH.issue_stage_i.i_issue_read_operands.fu_busy),
-    .is_ro_fu_i(`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu),
-
-    .issue_en_i(`COREPATH.issue_stage_i.i_scoreboard.issue_en),
-    .issue_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.issue_pointer_q),
-
-    .flu_ready_i(`COREPATH.ex_stage_i.flu_ready_o),
-
-    .load_valid_i(`COREPATH.ex_stage_i.lsu_i.ld_valid_i),
-    .pop_ld_i(`COREPATH.ex_stage_i.lsu_i.pop_ld),
-    .load_done_i(`COREPATH.ex_stage_i.lsu_i.ld_valid),
-
-    .store_valid_i(`COREPATH.ex_stage_i.lsu_i.st_valid_i),
-    .pop_st_i(`COREPATH.ex_stage_i.lsu_i.pop_st),
-    .store_done_i(`COREPATH.ex_stage_i.lsu_i.st_valid),
-
-    .load_state_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.state_q),
-    .store_state_i(`COREPATH.ex_stage_i.lsu_i.i_store_unit.state_q),
-    .fpu_busy_i(`COREPATH.ex_stage_i.fpu_gen.fpu_i.fpu_gen.i_fpnew_bulk.busy_o),
-
-    .commit_ack_i(`COREPATH.issue_stage_i.i_scoreboard.commit_ack_i[0]),
-    .commit_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.commit_pointer_q),
-    .commit_issued_q_i(`COREPATH.issue_stage_i.i_scoreboard.mem_q_commit.issued),
-    .commit_fu_q_i(`COREPATH.issue_stage_i.commit_instr_o[0].fu),
-    .commit_haz_i(`COREPATH.issue_stage_i.commit_instr_o[0].valid & ~`COREPATH.issue_stage_i.commit_ack_i[0]),
-
-    .fe_wait_o(csr_data_li[2]),
-    .is_busy_o(csr_data_li[3]),
-    .sb_full_o(csr_data_li[4]),
-    .br_haz_o(csr_data_li[5]),
-    .waw_haz_o(csr_data_li[6]),
-    .csr_haz_o(csr_data_li[7]),
-    .mul_haz_o(csr_data_li[8]),
-    .flu_busy_o(csr_data_li[9]),
-    .lsu_busy_o(csr_data_li[10]),
-    .fpu_busy_o(csr_data_li[11]),
-    .br_miss_o(csr_data_li[12]),
-    .lsu_tl_o(csr_data_li[13]),
-    .lsu_wait_o(csr_data_li[14]),
-    .amo_flush_o(csr_data_li[15]),
-    .csr_flush_o(csr_data_li[16]),
-    .exception_o(csr_data_li[17]),
-    .cmt_haz_o(csr_data_li[18]),
-    .unknown_o(csr_data_li[19])
-  );
-*/
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
    logic [127:0] mem_profiler_r;
@@ -336,19 +270,6 @@ module top_zynq
       ) zps
        (
         .csr_data_o(csr_data_lo)
-
-        // (MBT)
-        // note: this ability to probe into the core is not supported in ASIC toolflows but
-        // is supported in Verilator, VCS, and Vivado Synthesis.
-
-        // it is very helpful for adding instrumentation to a pre-existing design that you are
-        // prototyping in FPGA, where you don't necessarily want to put the support into the ASIC version
-        // or don't know yet if you want to.
-
-        // in additional to this approach of poking down into pre-existing registers, you can also
-        // instantiate counters, and then pull control signals out of the DUT in order to figure out when
-        // to increment the counters.
-        //
 
         ,.csr_data_i({ csr_data_li
                        , mem_profiler_r[127:96]
@@ -388,56 +309,6 @@ module top_zynq
         ,.S_AXI_RREADY (s00_axi_rready)
         );
 
-   // Address Translation (MBT):
-   //
-   // The Zynq PS Physical address space looks like this:
-   //
-   // 0x0000_0000 - 0x0003_FFFF  +256 KB On-chip memory (optional), else DDR DRAM
-   // 0x0004_0000 - 0x1FFF_FFFF  +512 MB DDR DRAM for Zynq P2 board
-   // 0x2000_0000 - 0x3FFF_FFFF  Another 512 MB DDR DRAM, if the board had it, it does not
-   // 0x4000_0000 - 0x7FFF_FFFF  1 GB Mapped to PL via M_AXI_GP0
-   // 0x8000_0000 - 0xBFFF_FFFF  1 GB Mapped to PL via M_AXI_GP1
-   // 0xFFFC_0000 - 0xFFFF_FFFF  Alternate location for OCM
-   //
-   // BlackParrot's Physical address space looks like this:
-   //    (see github.com/black-parrot/black-parrot/blob/master/docs/platform_guide.md)
-   //
-   // 0x00_0000_0000 - 0x00_7FFF_FFFF local addresses; 2GB: < 9'b0, 7b tile, 4b device, 20b 1MB space>
-   // 0x00_8000_0000 - 0x00_9FFF_FFFF cached dram (up to 512 MB, mapped to Zynq)
-   // 0x00_A000_0000 - 0x00_FFFF_FFFF cached dram that does not exist on Zynq board (another 1.5 GB)
-   // 0x01_0000_0000 - 0x0F_FFFF_FFFF cached dram that does not exist on Zynq board (another 60 GB)
-   // 0x10_0000_0000 - 0x1F_FFFF_FFFF on-chip address space for streaming accelerators
-   // 0x20_0000_0000 - 0xFF_FFFF_FFFF off-chip address space
-   //
-   // Currently, we allocate the Zynq M_AXI_GP0 address space to handle management of the shell
-   // that interfaces Zynq to external "accelerators" like BP.
-   //
-   // So the M_AXI_GP1 address space remains to map BP. A straight-forward translation is to
-   // map 0x8000_0000 - 0x8FFF_FFFF of Zynq Physical Address Space (PA) to the same addresses in BP
-   //  providing 256 MB of DRAM, leaving 256 MB for the Zynq PS system.
-   //
-   // Then we can map 0xA000_0000-0xAFFF_FFFF of ARM PA to 0x00_0000_0000 - 0x00_0FFF_FFFF of BP,
-   // handling up to tiles 0..15. (This is 256 MB of address space.)
-   //
-   // since these addresses are going to pop out of the M_AXI_GP1 port, they will already have
-   // 0x8000_0000 subtracted, it will ironically have to be added back in by this module
-   //
-   // M_AXI_GP1: 0x0000_0000 - 0x1000_0000 -> add      0x8000_0000.
-   //            0x2000_0000 - 0x3000_0000 -> subtract 0x2000_0000.
-
-   // Life of an address (FPGA):
-   //
-   //                NBF Loader                 mmap                  Xilinx IPI Switch         This Module
-   //  NBF (0x8000_0000) -> ARM VA (0x8000_0000) -> ARM PA (0x8000_0000) -> M_AXI_GP1 (0x0000_0000) -> BP (0x8000_0000)
-   //  NBF (0x0000_0000) -> ARM VA (0xA000_0000) -> ARM PA (0xA000_0000) -> M_AXI_GP1 (0x2000_0000) -> BP (0x0000_0000)
-   //
-   // Life of an address (Verilator):
-   //                  NBF Loader              bp_zynq_pl          Verilator Bit Truncation     This Module
-   //  NBF (0x8000_0000) -> ARM VA (x8000_0000) ->  ARM PA (0x8000_0000) -> M_AXI_GP1 (0x0000_0000) -> BP (0x8000_0000)
-   //  NBF (0x0000_0000) -> ARM VA (xA000_0000) ->  ARM PA (0xA000_0000) -> M_AXI_GP1 (0x2000_0000) -> BP (0x0000_0000)
-   //
-   //
-
    logic [64-1:0] io_awaddr;
    logic io_awvalid, io_awready;
    logic [64-1:0] io_wdata;
@@ -455,29 +326,15 @@ module top_zynq
    logic [64-1:0] io_addr, io_data;
 
    logic [64-1:0] waddr_translated_lo, raddr_translated_lo;
+   logic [64-1:0] axi_awaddr, axi_araddr;
 
-        // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
-        // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
+   // AXI 0x0000_0000 .. 0x0FFF_FFFF -> Core 0x8000_0000 - 0x8FFF_FFFF
+   // AXI 0x2000_0000 .. 0x2FFF_FFFF -> Core 0x0000_0000 - 0x0FFF_FFFF
    assign waddr_translated_lo = {32'b0, ~s01_axi_awaddr[29], 3'b0, s01_axi_awaddr[0+:28]};
-
-        // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
-        // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
    assign raddr_translated_lo = {32'b0, ~s01_axi_araddr[29], 3'b0, s01_axi_araddr[0+:28]};
 
-   // to translate from BP DRAM space to ARM PS DRAM space
-   // we xor-subtract the BP DRAM base address (32'h8000_0000) and add the
-   // ARM PS allocated memory space physical address.
-
-   logic [64-1:0] axi_awaddr, axi_araddr;
    assign m00_axi_awaddr = (axi_awaddr[0+:32] ^ 32'h8000_0000) + csr_data_lo[2];
    assign m00_axi_araddr = (axi_araddr[0+:32] ^ 32'h8000_0000) + csr_data_lo[2];
-
-   // AXI4 to AXI3 stiching
-   assign m00_axi_awid[5] = '0;
-   assign m00_axi_arid[5] = '0;
-   assign m00_axi_wid = m00_axi_awid;
-   assign m00_axi_awlock[1] = '0;
-   assign m00_axi_arlock[1] = '0;
 
    assign pl_to_ps_fifo_v_li    = io_v & io_we;
    assign pl_to_ps_fifo_data_li = {(io_v & io_we), io_addr[22:0], io_data[7:0]};
@@ -553,47 +410,47 @@ module top_zynq
      ,.m_awvalid_o (m00_axi_awvalid)
      ,.m_awburst_o (m00_axi_awburst)
      ,.m_awaddr_o  (axi_awaddr)
-     ,.m_awlen_o   (m00_axi_awlen) //8->4
+     ,.m_awlen_o   (m00_axi_awlen)
      ,.m_awsize_o  (m00_axi_awsize)
-     ,.m_awid_o    (m00_axi_awid) //5->6
+     ,.m_awid_o    (m00_axi_awid)
      ,.m_awcache_o (m00_axi_awcache)
      ,.m_awprot_o  (m00_axi_awprot)
      ,.m_awqos_o   (m00_axi_awqos)
-     ,.m_awuser_o  ()
-     ,.m_awlock_o  (m00_axi_awlock) //1->2
+     ,.m_awuser_o  (m00_axi_awuser)
+     ,.m_awlock_o  (m00_axi_awlock)
 
      ,.m_wready_i  (m00_axi_wready)
      ,.m_wvalid_o  (m00_axi_wvalid)
      ,.m_wstrb_o   (m00_axi_wstrb)
      ,.m_wdata_o   (m00_axi_wdata)
      ,.m_wlast_o   (m00_axi_wlast)
-     ,.m_wuser_o   ()
+     ,.m_wuser_o   (m00_axi_wuser)
 
      ,.m_bvalid_i  (m00_axi_bvalid)
      ,.m_bresp_i   (m00_axi_bresp)
-     ,.m_bid_i     (m00_axi_bid) //5->6
-     ,.m_buser_i   ('0)
+     ,.m_bid_i     (m00_axi_bid)
+     ,.m_buser_i   (m00_axi_buser)
      ,.m_bready_o  (m00_axi_bready)
 
      ,.m_arready_i (m00_axi_arready)
      ,.m_arvalid_o (m00_axi_arvalid)
      ,.m_arburst_o (m00_axi_arburst)
      ,.m_araddr_o  (axi_araddr)
-     ,.m_arlen_o   (m00_axi_arlen) //8->4
+     ,.m_arlen_o   (m00_axi_arlen)
      ,.m_arsize_o  (m00_axi_arsize)
-     ,.m_arid_o    (m00_axi_arid) //5->6
+     ,.m_arid_o    (m00_axi_arid)
      ,.m_arcache_o (m00_axi_arcache)
      ,.m_arprot_o  (m00_axi_arprot)
      ,.m_arqos_o   (m00_axi_arqos)
-     ,.m_aruser_o  ()
-     ,.m_arlock_o  (m00_axi_arlock) //1->2
+     ,.m_aruser_o  (m00_axi_aruser)
+     ,.m_arlock_o  (m00_axi_arlock)
 
      ,.m_rvalid_i  (m00_axi_rvalid)
      ,.m_rdata_i   (m00_axi_rdata)
      ,.m_rresp_i   (m00_axi_rresp)
-     ,.m_rid_i     (m00_axi_rid) //5->6
+     ,.m_rid_i     (m00_axi_rid)
      ,.m_rlast_i   (m00_axi_rlast)
-     ,.m_ruser_i   ('0)
+     ,.m_ruser_i   (m00_axi_ruser)
      ,.m_rready_o  (m00_axi_rready)
 
      ,.io_awready_i(io_awready)
