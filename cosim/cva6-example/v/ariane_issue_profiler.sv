@@ -83,6 +83,7 @@ module ariane_issue_profiler
    )
    (input clk_i
     , input reset_i
+    , input en_i
 
     , input instr_qeueu_valid_i
     , input instr_queue_ready_i
@@ -380,7 +381,7 @@ module ariane_issue_profiler
    (.clk_i(clk_i)                                            \
    ,.reset_i(reset_i)                                        \
    ,.clear_i(reset_i)                                        \
-   ,.up_i(stall_v & (stall_reason_enum == ``name``))         \
+   ,.up_i(en_i & stall_v & (stall_reason_enum == ``name``))  \
    ,.count_o(``name``_o)                                     \
    );
 
@@ -425,7 +426,7 @@ module ariane_issue_profiler
    (.clk_i(clk_i)
    ,.reset_i(reset_i)
    ,.clear_i(reset_i)
-   ,.up_i(stall_v & ((stall_reason_enum == unknown) | ~(|is)))
+   ,.up_i(en_i & stall_v & ((stall_reason_enum == unknown) | ~(|is)))
    ,.count_o(unknown_o)
    );
 

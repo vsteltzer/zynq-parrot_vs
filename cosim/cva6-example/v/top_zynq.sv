@@ -140,7 +140,7 @@ module top_zynq
     ,input wire                                  m00_axi_ruser
     );
 
-   logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
+   logic [4:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
    logic                                        pl_to_ps_fifo_v_li, pl_to_ps_fifo_ready_lo;
    logic                                        ps_to_pl_fifo_v_lo, ps_to_pl_fifo_yumi_li;
@@ -150,20 +150,39 @@ module top_zynq
 
    wire resetn_li = csr_data_lo[0][0] & s01_axi_aresetn;
    wire core_resetn_li = csr_data_lo[3][0] & s01_axi_aresetn;
+   wire counter_en_li = csr_data_lo[4][0];
 
    `define COREPATH ariane.i_ariane
 
    localparam csr_num_lp = 37;
    logic [csr_num_lp-1:0][64-1:0] csr_data_li;
 
-   assign csr_data_li[0] = ariane.i_ariane.csr_regfile_i.cycle_q[0+:64];
-   assign csr_data_li[1] = ariane.i_ariane.csr_regfile_i.instret_q[0+:64];
+  bsg_dff_reset_en #(
+    .width_p(64)
+  ) i_cycle (
+    .clk_i(s01_axi_aclk),
+    .reset_i(~core_resetn_li),
+    .en_i(counter_en_li),
+    .data_i(`COREPATH.csr_regfile_i.cycle_q[0+:64]),
+    .data_o(csr_data_li[0])
+  );
+
+  bsg_dff_reset_en #(
+    .width_p(64)
+  ) i_instret (
+    .clk_i(s01_axi_aclk),
+    .reset_i(~core_resetn_li),
+    .en_i(counter_en_li),
+    .data_i(`COREPATH.csr_regfile_i.instret_q[0+:64]),
+    .data_o(csr_data_li[1])
+  );
 
   ariane_issue_profiler #(
     .width_p(64)
   ) i_profiler (
-    .clk_i (s01_axi_aclk),
-    .reset_i (~core_resetn_li),
+    .clk_i(s01_axi_aclk),
+    .reset_i(~core_resetn_li),
+    .en_i(counter_en_li),
 
     .instr_qeueu_valid_i(`COREPATH.i_frontend.fetch_entry_valid_o),
     .instr_queue_ready_i(`COREPATH.i_frontend.i_instr_queue.ready_o),
@@ -252,16 +271,7 @@ module top_zynq
    // Connect Shell to AXI Bus Interface S00_AXI
    bsg_zynq_pl_shell #
      (
-      .num_regs_ps_to_pl_p (4)
-      // standard memory map for all blackparrot instances should be
-      //
-      // 0: reset for bp (low true); note: it is only legal to assert reset if you are
-      //    finished with all AXI transactions (fixme: potential improvement to detect this)
-      // 4: = 1 if the DRAM has been allocated for the device in the ARM PS Linux subsystem
-      // 8: the base register for the allocated dram
-      //
-
-      // need to update C_S00_AXI_ADDR_WIDTH accordingly
+      .num_regs_ps_to_pl_p (5)
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
       ,.num_regs_pl_to_ps_p(4 + (2*csr_num_lp))
