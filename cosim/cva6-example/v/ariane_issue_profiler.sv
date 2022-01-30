@@ -174,7 +174,7 @@ module ariane_issue_profiler
   stall_reason_s id, id_r, is, ld, ld_r, ld_lo;
   stall_reason_s ic_busy;
   fu_t rs1_clobber_li, rs2_clobber_li, raw_clobber_li, waw_clobber_li;
-  logic[REG_ADDR_SIZE-1:0] lsu_ld_rd, lsu_ld_rd_r, raw_gpr_rs;
+  logic[REG_ADDR_SIZE-1:0] lsu_ld_rd, lsu_ld_rd_r, raw_rs_li;
   logic[TRANS_ID_BITS-1:0] lsu_ld_trans_id;
   logic raw_haz_r, waw_haz_r;
 
@@ -185,15 +185,15 @@ module ariane_issue_profiler
   wire icache_invl = (icache_state_q_i inside {IC_IDLE, IC_READ}) & icache_rtrn_vld_i;
 
   // Clobber
-  assign rs1_clobber_li = is_rd_fpr(is_instr_i.op) ? is_rd_clobber_fpr_i[is_instr_i.rs1] : is_rd_clobber_gpr_i[is_instr_i.rs1];
-  assign rs2_clobber_li = is_rd_fpr(is_instr_i.op) ? is_rd_clobber_fpr_i[is_instr_i.rs2] : is_rd_clobber_gpr_i[is_instr_i.rs2];
-  assign raw_clobber_li = (!is_forward_rs3_i && is_rd_fpr(is_instr_i.op) && (is_rd_clobber_fpr_i[is_instr_i.result[REG_ADDR_SIZE-1:0]] != NONE))
-                          ? is_rd_clobber_fpr_i[is_instr_i.result[REG_ADDR_SIZE-1:0]]
+  assign rs1_clobber_li = is_rs1_fpr(is_instr_i.op) ? is_rd_clobber_fpr_i[is_instr_i.rs1] : is_rd_clobber_gpr_i[is_instr_i.rs1];
+  assign rs2_clobber_li = is_rs2_fpr(is_instr_i.op) ? is_rd_clobber_fpr_i[is_instr_i.rs2] : is_rd_clobber_gpr_i[is_instr_i.rs2];
+  assign {raw_rs_li, raw_clobber_li}
+                        = (!is_forward_rs3_i && is_imm_fpr(is_instr_i.op) && (is_rd_clobber_fpr_i[is_instr_i.result[REG_ADDR_SIZE-1:0]] != NONE))
+                          ? {is_instr_i.result[REG_ADDR_SIZE-1:0], is_rd_clobber_fpr_i[is_instr_i.result[REG_ADDR_SIZE-1:0]]}
                           : (!is_forward_rs2_i && (rs2_clobber_li != NONE))
-                            ? rs2_clobber_li
-                            : rs1_clobber_li;
+                            ? {is_instr_i.rs2, rs2_clobber_li}
+                            : {is_instr_i.rs1, rs1_clobber_li};
   assign waw_clobber_li = is_rd_fpr(is_instr_i.op) ? is_rd_clobber_fpr_i[is_instr_i.rd] : is_rd_clobber_gpr_i[is_instr_i.rd];
-  assign raw_gpr_rs = (!is_forward_rs2_i && (rs2_clobber_li != NONE)) ? is_instr_i.rs2 : is_instr_i.rs1;
 
   // Issue stage stalls
   wire is_stall_li = is_valid_i & ~is_ack_i;
@@ -213,8 +213,8 @@ module ariane_issue_profiler
   wire ld_wait_gnt_li = ld_valid_li & (ld_state_q_i == LD_WAIT_GNT);
   wire ld_page_off_li = ld_valid_li & (ld_state_q_i == LD_WAIT_PAGE_OFFSET);
   wire st_wait_rdy_li = ~ld_valid_li & (st_state_q_i == ST_WAIT_STORE_READY);
-  wire ld_in_dcache = (lsu_ld_rd_r == (waw_haz_li ? is_instr_i.rd : raw_gpr_rs))
-                    | ((lsu_ld_rd == (waw_haz_li ? is_instr_i.rd : raw_gpr_rs)) & (ld_state_q_i == LD_SEND_TAG) & ~ld_done_i);
+  wire ld_in_dcache = (lsu_ld_rd_r == (waw_haz_li ? is_instr_i.rd : raw_rs_li))
+                    | ((lsu_ld_rd == (waw_haz_li ? is_instr_i.rd : raw_rs_li)) & (ld_state_q_i == LD_SEND_TAG) & ~ld_done_i);
 
   always_ff @(posedge clk_i) begin
     if(reset_i)
@@ -285,7 +285,7 @@ module ariane_issue_profiler
 
     ld_lo = ld_r;
     ld_lo.waw_ld_pipe |= ld_valid_li & (ld_state_q_i inside {LD_IDLE, LD_SEND_TAG});
-    ld_lo.waw_dcache  |= ld_in_dcache & ((~raw_haz_r & raw_haz_li) | (~waw_haz_r & waw_haz_li));
+    ld_lo.waw_dcache  |= ld_in_dcache;
 
     //Frontend
     //PC gen
