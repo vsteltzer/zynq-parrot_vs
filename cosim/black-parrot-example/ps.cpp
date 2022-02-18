@@ -34,28 +34,28 @@ void nbf_load(bp_zynq_pl *zpl, char *);
 bool decode_bp_output(bp_zynq_pl *zpl, int data);
 void report(bp_zynq_pl *zpl, char *);
 #ifdef FPGA
-void monitor(bp_zynq_pl *zpl, char *);
+void sample(bp_zynq_pl *zpl, char *);
 bool run = true;
 #endif
 
 const char* metrics[] = {
   "mcycle", "minstret",
-  "fe_wait", "fe_queue_full", "icache_rollback", "icache_miss",
-  "branch_override", "ret_override", "fe_cmd", "fe_cmd_fence", "mispredict",
-  "control_haz", "long_haz", "data_haz",
+  "icache_miss", "branch_override", "ret_override", "fe_cmd", "fe_cmd_fence",
+  "mispredict", "control_haz", "long_haz", "data_haz",
   "aux_dep", "load_dep", "mul_dep", "fma_dep", "sb_iraw_dep",
   "sb_fraw_dep", "sb_iwaw_dep", "sb_fwaw_dep",
-  "struct_haz", "long_i_busy", "long_f_busy", "long_if_busy",
-  "dcache_rollback", "dcache_miss", "dcache_fail", "unknown",
+  "struct_haz", "idiv_haz", "fdiv_haz",
+  "ptw_busy", "special", "replay", "exception", "_interrupt",
+  "itlb_miss", "dtlb_miss", "dcache_miss", "unknown",
   "mem_instr", "aux_instr", "fma_instr", "ilong_instr", "flong_instr"
 };
 
 const char* samples[] = {
-  "mcycle", "minstret", "load_dep", "mul_dep", "fma_dep", "sb_iraw_dep", "sb_fraw_dep", "sb_iwaw_dep", "sb_fwaw_dep"
+  "mcycle", "minstret"
 };
 
 std::queue<int> getchar_queue;  
-/*
+
 void *monitor(void *vargp) {
   int c = -1;
   while(1) {
@@ -64,7 +64,7 @@ void *monitor(void *vargp) {
       getchar_queue.push(c);
   }
 }
-*/
+
 inline uint64_t get_counter_64(bp_zynq_pl *zpl, uint64_t addr) {
   uint64_t val;
   do {
@@ -270,9 +270,9 @@ extern "C" void cosim_main(char *argstr) {
 
 #endif // DRAM_TEST
 
-  //bsg_pr_info("ps.cpp: Starting scan thread\n");
-  //pthread_t thread_id;
-  //pthread_create(&thread_id, NULL, monitor, NULL);
+  bsg_pr_info("ps.cpp: Starting scan thread\n");
+  pthread_t thread_id;
+  pthread_create(&thread_id, NULL, monitor, NULL);
 
   bsg_pr_info("ps.cpp: beginning nbf load\n");
   nbf_load(zpl, argv[1]);
@@ -285,7 +285,7 @@ extern "C" void cosim_main(char *argstr) {
   bsg_pr_info("ps.cpp: polling i/o\n");
 
 #ifdef FPGA
-  std::thread t(monitor, zpl, argv[1]);
+  std::thread t(sample, zpl, argv[1]);
 #endif
   while (1) {
 #ifndef FPGA
@@ -298,7 +298,6 @@ extern "C" void cosim_main(char *argstr) {
       }
     }
 #endif
-
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
     if (data != 0) {
@@ -523,7 +522,7 @@ void report(bp_zynq_pl *zpl, char* nbf_filename) {
 }
 
 #ifdef FPGA
-void monitor(bp_zynq_pl *zpl, char* nbf_filename) {
+void sample(bp_zynq_pl *zpl, char* nbf_filename) {
 
   char filename[100];
   if(strrchr(nbf_filename, '/') != NULL)

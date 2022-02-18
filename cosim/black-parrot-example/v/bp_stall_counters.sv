@@ -10,14 +10,12 @@ module bp_stall_counters
     , parameter width_p = 32
 
     , localparam commit_pkt_width_lp = `bp_be_commit_pkt_width(vaddr_width_p, paddr_width_p)
+    , localparam retire_pkt_width_lp = `bp_be_retire_pkt_width(vaddr_width_p)
     )
    (input clk_i
     , input reset_i
     , input freeze_i
 
-    , input fe_queue_empty_i
-
-    , input [1:0] fe_state_n_i
     , input fe_queue_ready_i
     , input fe_icache_ready_i
 
@@ -26,16 +24,14 @@ module bp_stall_counters
     , input ret_ovr_i
     , input icache_data_v_i
 
-    // Backwards ISS events
     , input fe_cmd_nonattaboy_i
     , input fe_cmd_fence_i
+    , input fe_queue_empty_i
 
-    // ISD events
+    , input dcache_miss_i
     , input mispredict_i
-
-    , input control_haz_i
     , input long_haz_i
-
+    , input control_haz_i
     , input data_haz_i
     , input aux_dep_i
     , input load_dep_i
@@ -45,34 +41,19 @@ module bp_stall_counters
     , input sb_fraw_dep_i
     , input sb_iwaw_dep_i
     , input sb_fwaw_dep_i
-
     , input struct_haz_i
-    , input long_busy_i
-    , input long_i_busy_i
-    , input long_f_busy_i
+    , input idiv_haz_i
+    , input fdiv_haz_i
+    , input ptw_busy_i
 
-    // ALU events
-
-    // MUL events
-
-    // MEM events
-    , input dcache_rollback_i
-    , input dcache_miss_i
-    , input dcache_fail_i
-
-    // Trap packet
+    , input [retire_pkt_width_lp-1:0] retire_pkt_i
     , input [commit_pkt_width_lp-1:0] commit_pkt_i
 
     // output counters
     , output [width_p-1:0] mcycle_o
     , output [width_p-1:0] minstret_o
 
-    , output [width_p-1:0] fe_wait_o
-    , output [width_p-1:0] fe_queue_full_o
-
-    , output [width_p-1:0] icache_rollback_o
     , output [width_p-1:0] icache_miss_o
-
     , output [width_p-1:0] branch_override_o
     , output [width_p-1:0] ret_override_o
 
@@ -95,13 +76,17 @@ module bp_stall_counters
     , output [width_p-1:0] sb_fwaw_dep_o
 
     , output [width_p-1:0] struct_haz_o
-    , output [width_p-1:0] long_i_busy_o
-    , output [width_p-1:0] long_f_busy_o
-    , output [width_p-1:0] long_if_busy_o
+    , output [width_p-1:0] idiv_haz_o
+    , output [width_p-1:0] fdiv_haz_o
 
-    , output [width_p-1:0] dcache_rollback_o
+    , output [width_p-1:0] ptw_busy_o
+    , output [width_p-1:0] special_o
+    , output [width_p-1:0] replay_o
+    , output [width_p-1:0] exception_o
+    , output [width_p-1:0] _interrupt_o
+    , output [width_p-1:0] itlb_miss_o
+    , output [width_p-1:0] dtlb_miss_o
     , output [width_p-1:0] dcache_miss_o
-    , output [width_p-1:0] dcache_fail_o
 
     , output [width_p-1:0] unknown_o
 
@@ -119,11 +104,6 @@ module bp_stall_counters
     ,.reset_i        (reset_i)
     ,.freeze_i       (freeze_i)
     ,.mhartid_i      ('0)
-    ,.itlb_miss_r_i  ('0)
-    ,.dtlb_miss_i    ('0)
-    ,.eret_i         ('0)
-    ,.exception_i    ('0)
-    ,._interrupt_i   ('0)
     ,.*
     );
 
@@ -137,13 +117,10 @@ module bp_stall_counters
    (.clk_i(clk_i)                                            \
    ,.reset_i(reset_i)                                        \
    ,.clear_i(freeze_i)                                       \
-   ,.up_i(stall_v & (prof.stall_reason_enum == ``name``))    \
+   ,.up_i(stall_v & (prof.bp_stall_reason_enum == ``name``))    \
    ,.count_o(``name``_o)                                     \
    );
 
-  `declare_counter(fe_wait)
-  `declare_counter(fe_queue_full)
-  `declare_counter(icache_rollback)
   `declare_counter(icache_miss)
   `declare_counter(branch_override)
   `declare_counter(ret_override)
@@ -162,12 +139,16 @@ module bp_stall_counters
   `declare_counter(sb_iwaw_dep)
   `declare_counter(sb_fwaw_dep)
   `declare_counter(struct_haz)
-  `declare_counter(long_i_busy)
-  `declare_counter(long_f_busy)
-  `declare_counter(long_if_busy)
-  `declare_counter(dcache_rollback)
+  `declare_counter(idiv_haz)
+  `declare_counter(fdiv_haz)
+  `declare_counter(ptw_busy)
+  `declare_counter(special)
+  `declare_counter(replay)
+  `declare_counter(exception)
+  `declare_counter(_interrupt)
+  `declare_counter(itlb_miss)
+  `declare_counter(dtlb_miss)
   `declare_counter(dcache_miss)
-  `declare_counter(dcache_fail)
 
    bsg_counter_clear_up
     #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
@@ -175,7 +156,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(stall_v & (prof.stall_reason_enum == unknown))
+    ,.up_i(stall_v & (prof.bp_stall_reason_enum == unknown))
     ,.count_o(unknown_o)
     );
 

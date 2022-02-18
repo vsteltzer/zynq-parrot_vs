@@ -11,7 +11,7 @@ module top_zynq
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p, uce)
+   `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
    // NOTE these parameters are usually overridden by the parent module (top.v)
    // but we set them to make expectations consistent
@@ -151,12 +151,12 @@ module top_zynq
    localparam bp_axi_data_width_lp  = 64;
 
    `ifdef MULTICORE
-      `define COREPATH blackparrot.w.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal
+      `define COREPATH blackparrot.m.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal
    `else
-      `define COREPATH blackparrot.w.unicore.unicore_lite.core_minimal
+      `define COREPATH blackparrot.u.unicore.unicore_lite.core_minimal
    `endif
 
-   localparam counter_num_p = 35;
+   localparam counter_num_p = 36;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
 
    bp_stall_counters
@@ -168,7 +168,6 @@ module top_zynq
      ,.reset_i(bp_reset_li)
      ,.freeze_i(`COREPATH.be.calculator.pipe_sys.csr.cfg_bus_cast_i.freeze)
 
-     ,.fe_state_n_i(`COREPATH.fe.state_n)
      ,.fe_queue_ready_i(`COREPATH.fe.fe_queue_ready_i)
      ,.fe_icache_ready_i(`COREPATH.fe.icache.ready_o)
 
@@ -176,19 +175,15 @@ module top_zynq
      ,.br_ovr_i(`COREPATH.fe.pc_gen.ovr_taken)
      ,.ret_ovr_i(`COREPATH.fe.pc_gen.ovr_ret)
      ,.icache_data_v_i(`COREPATH.fe.icache.data_v_o)
-     ,.fe_cmd_nonattaboy_i(`COREPATH.fe.fe_cmd_yumi_o & ~`COREPATH.fe.attaboy_v)
 
+     ,.fe_cmd_nonattaboy_i(`COREPATH.fe.fe_cmd_yumi_o & ~`COREPATH.fe.attaboy_v)
      ,.fe_cmd_fence_i(`COREPATH.be.director.suppress_iss_o)
      ,.fe_queue_empty_i(~`COREPATH.be.scheduler.fe_queue_fifo.fe_queue_v_o)
+
      ,.mispredict_i(`COREPATH.be.director.npc_mismatch_v)
-
-     ,.dcache_rollback_i(`COREPATH.be.scheduler.commit_pkt_cast_i.dcache_miss)
      ,.dcache_miss_i(~`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
-     ,.dcache_fail_i(`COREPATH.be.calculator.pipe_sys.csr.retire_pkt_cast_i.exception.dcache_fail)
-
-     ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
      ,.long_haz_i(`COREPATH.be.detector.long_haz_v)
-
+     ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
      ,.data_haz_i(`COREPATH.be.detector.data_haz_v)
      ,.aux_dep_i((`COREPATH.be.detector.dep_status_r[0].aux_iwb_v
                 | `COREPATH.be.detector.dep_status_r[0].aux_fwb_v
@@ -224,55 +219,51 @@ module top_zynq
                    )
      ,.sb_iwaw_dep_i(`COREPATH.be.detector.ird_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
      ,.sb_fwaw_dep_i(`COREPATH.be.detector.frd_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
-
      ,.struct_haz_i(`COREPATH.be.detector.struct_haz_v)
-     ,.long_busy_i(1'b0/*~`COREPATH.be.detector.long_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v*/)
-     ,.long_i_busy_i((~`COREPATH.be.calculator.pipe_long.idiv_ready_and_lo
-                     | (`COREPATH.be.calculator.pipe_long.v_li & `COREPATH.be.calculator.pipe_long.decode.late_iwb_v)
-                    ) & `COREPATH.be.detector.dispatch_pkt_cast_i.decode.late_iwb_v
-                   )
-     ,.long_f_busy_i((~`COREPATH.be.calculator.pipe_long.fdiv_ready_lo
-                     | (`COREPATH.be.calculator.pipe_long.v_li & `COREPATH.be.calculator.pipe_long.decode.late_fwb_v)
-                    ) & `COREPATH.be.detector.dispatch_pkt_cast_i.decode.late_fwb_v
-                   )
+     ,.idiv_haz_i(~`COREPATH.be.detector.idiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.fdiv_haz_i(~`COREPATH.be.detector.fdiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.ptw_busy_i(`COREPATH.be.detector.ptw_busy_i)
 
-     ,.commit_pkt_i(`COREPATH.be.calculator.commit_pkt_cast_o)
+     ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
+     ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
+
 
      ,.mcycle_o               (csr_data_li[0])
      ,.minstret_o             (csr_data_li[1])
-     ,.fe_wait_o              (csr_data_li[2])
-     ,.fe_queue_full_o        (csr_data_li[3])
-     ,.icache_rollback_o      (csr_data_li[4])
-     ,.icache_miss_o          (csr_data_li[5])
-     ,.branch_override_o      (csr_data_li[6])
-     ,.ret_override_o         (csr_data_li[7])
-     ,.fe_cmd_o               (csr_data_li[8])
-     ,.fe_cmd_fence_o         (csr_data_li[9])
-     ,.mispredict_o           (csr_data_li[10])
-     ,.control_haz_o          (csr_data_li[11])
-     ,.long_haz_o             (csr_data_li[12])
-     ,.data_haz_o             (csr_data_li[13])
-     ,.aux_dep_o              (csr_data_li[14])
-     ,.load_dep_o             (csr_data_li[15])
-     ,.mul_dep_o              (csr_data_li[16])
-     ,.fma_dep_o              (csr_data_li[17])
-     ,.sb_iraw_dep_o          (csr_data_li[18])
-     ,.sb_fraw_dep_o          (csr_data_li[19])
-     ,.sb_iwaw_dep_o          (csr_data_li[20])
-     ,.sb_fwaw_dep_o          (csr_data_li[21])
-     ,.struct_haz_o           (csr_data_li[22])
-     ,.long_i_busy_o          (csr_data_li[23])
-     ,.long_f_busy_o          (csr_data_li[24])
-     ,.long_if_busy_o         (csr_data_li[25])
-     ,.dcache_rollback_o      (csr_data_li[26])
-     ,.dcache_miss_o          (csr_data_li[27])
-     ,.dcache_fail_o          (csr_data_li[28])
-     ,.unknown_o              (csr_data_li[29])
-     ,.mem_instr_o            (csr_data_li[30])
-     ,.aux_instr_o            (csr_data_li[31])
-     ,.fma_instr_o            (csr_data_li[32])
-     ,.ilong_instr_o          (csr_data_li[33])
-     ,.flong_instr_o          (csr_data_li[34])
+     ,.icache_miss_o          (csr_data_li[2])
+     ,.branch_override_o      (csr_data_li[3])
+     ,.ret_override_o         (csr_data_li[4])
+     ,.fe_cmd_o               (csr_data_li[5])
+     ,.fe_cmd_fence_o         (csr_data_li[6])
+     ,.mispredict_o           (csr_data_li[7])
+     ,.control_haz_o          (csr_data_li[8])
+     ,.long_haz_o             (csr_data_li[9])
+     ,.data_haz_o             (csr_data_li[10])
+     ,.aux_dep_o              (csr_data_li[11])
+     ,.load_dep_o             (csr_data_li[12])
+     ,.mul_dep_o              (csr_data_li[13])
+     ,.fma_dep_o              (csr_data_li[14])
+     ,.sb_iraw_dep_o          (csr_data_li[15])
+     ,.sb_fraw_dep_o          (csr_data_li[16])
+     ,.sb_iwaw_dep_o          (csr_data_li[17])
+     ,.sb_fwaw_dep_o          (csr_data_li[18])
+     ,.struct_haz_o           (csr_data_li[19])
+     ,.idiv_haz_o             (csr_data_li[20])
+     ,.fdiv_haz_o             (csr_data_li[21])
+     ,.ptw_busy_o             (csr_data_li[22])
+     ,.special_o              (csr_data_li[23])
+     ,.replay_o               (csr_data_li[24])
+     ,.exception_o            (csr_data_li[25])
+     ,._interrupt_o           (csr_data_li[26])
+     ,.itlb_miss_o            (csr_data_li[27])
+     ,.dtlb_miss_o            (csr_data_li[28])
+     ,.dcache_miss_o          (csr_data_li[29])
+     ,.unknown_o              (csr_data_li[30])
+     ,.mem_instr_o            (csr_data_li[31])
+     ,.aux_instr_o            (csr_data_li[32])
+     ,.fma_instr_o            (csr_data_li[33])
+     ,.ilong_instr_o          (csr_data_li[34])
+     ,.flong_instr_o          (csr_data_li[35])
      );
 
    logic [2:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
