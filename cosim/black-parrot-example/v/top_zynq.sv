@@ -145,6 +145,9 @@ module top_zynq
    , output wire                                 m01_axi_rready
    );
 
+   localparam debug_lp = 0;
+   localparam memory_upper_limit_lp = 256*1024*1024;
+
    localparam bp_axil_addr_width_lp = 32;
    localparam bp_axil_data_width_lp = 32;
    localparam bp_axi_addr_width_lp  = 32;
@@ -158,115 +161,7 @@ module top_zynq
 
    localparam counter_num_p = 36;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
-
-   bp_stall_counters
-    #(.bp_params_p(bp_params_p)
-     ,.width_p(64)
-     )
-     stall_counters
-     (.clk_i(s01_axi_aclk)
-     ,.reset_i(bp_reset_li)
-     ,.freeze_i(`COREPATH.be.calculator.pipe_sys.csr.cfg_bus_cast_i.freeze)
-
-     ,.fe_queue_ready_i(`COREPATH.fe.fe_queue_ready_i)
-     ,.fe_icache_ready_i(`COREPATH.fe.icache.ready_o)
-
-     ,.if2_v_i(`COREPATH.fe.v_if2_r)
-     ,.br_ovr_i(`COREPATH.fe.pc_gen.ovr_taken)
-     ,.ret_ovr_i(`COREPATH.fe.pc_gen.ovr_ret)
-     ,.icache_data_v_i(`COREPATH.fe.icache.data_v_o)
-
-     ,.fe_cmd_nonattaboy_i(`COREPATH.fe.fe_cmd_yumi_o & ~`COREPATH.fe.attaboy_v)
-     ,.fe_cmd_fence_i(`COREPATH.be.director.suppress_iss_o)
-     ,.fe_queue_empty_i(~`COREPATH.be.scheduler.fe_queue_fifo.fe_queue_v_o)
-
-     ,.mispredict_i(`COREPATH.be.director.npc_mismatch_v)
-     ,.dcache_miss_i(~`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
-     ,.long_haz_i(`COREPATH.be.detector.long_haz_v)
-     ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
-     ,.data_haz_i(`COREPATH.be.detector.data_haz_v)
-     ,.aux_dep_i((`COREPATH.be.detector.dep_status_r[0].aux_iwb_v
-                | `COREPATH.be.detector.dep_status_r[0].aux_fwb_v
-                ) & `COREPATH.be.detector.data_haz_v
-               )
-     ,.load_dep_i((`COREPATH.be.detector.dep_status_r[0].emem_iwb_v
-                   | `COREPATH.be.detector.dep_status_r[0].fmem_iwb_v
-                   | `COREPATH.be.detector.dep_status_r[1].fmem_iwb_v
-                   | `COREPATH.be.detector.dep_status_r[0].emem_fwb_v
-                   | `COREPATH.be.detector.dep_status_r[0].fmem_fwb_v
-                   | `COREPATH.be.detector.dep_status_r[1].fmem_fwb_v
-                   ) & `COREPATH.be.detector.data_haz_v
-                  )
-     ,.mul_dep_i((`COREPATH.be.detector.dep_status_r[0].mul_iwb_v
-                  | `COREPATH.be.detector.dep_status_r[1].mul_iwb_v
-                  | `COREPATH.be.detector.dep_status_r[2].mul_iwb_v
-                  ) & `COREPATH.be.detector.data_haz_v
-                 )
-     ,.fma_dep_i((`COREPATH.be.detector.dep_status_r[0].fma_fwb_v
-                | `COREPATH.be.detector.dep_status_r[1].fma_fwb_v
-                | `COREPATH.be.detector.dep_status_r[2].fma_fwb_v
-                | `COREPATH.be.detector.dep_status_r[3].fma_fwb_v
-                ) & `COREPATH.be.detector.data_haz_v
-               )
-     ,.sb_iraw_dep_i((`COREPATH.be.detector.irs1_sb_raw_haz_v
-                    | `COREPATH.be.detector.irs2_sb_raw_haz_v
-                    ) & `COREPATH.be.detector.data_haz_v
-                   )
-     ,.sb_fraw_dep_i((`COREPATH.be.detector.frs1_sb_raw_haz_v
-                    | `COREPATH.be.detector.frs2_sb_raw_haz_v
-                    | `COREPATH.be.detector.frs3_sb_raw_haz_v
-                    ) & `COREPATH.be.detector.data_haz_v
-                   )
-     ,.sb_iwaw_dep_i(`COREPATH.be.detector.ird_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
-     ,.sb_fwaw_dep_i(`COREPATH.be.detector.frd_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
-     ,.struct_haz_i(`COREPATH.be.detector.struct_haz_v)
-     ,.idiv_haz_i(~`COREPATH.be.detector.idiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
-     ,.fdiv_haz_i(~`COREPATH.be.detector.fdiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
-     ,.ptw_busy_i(`COREPATH.be.detector.ptw_busy_i)
-
-     ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
-     ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
-
-
-     ,.mcycle_o               (csr_data_li[0])
-     ,.minstret_o             (csr_data_li[1])
-     ,.icache_miss_o          (csr_data_li[2])
-     ,.branch_override_o      (csr_data_li[3])
-     ,.ret_override_o         (csr_data_li[4])
-     ,.fe_cmd_o               (csr_data_li[5])
-     ,.fe_cmd_fence_o         (csr_data_li[6])
-     ,.mispredict_o           (csr_data_li[7])
-     ,.control_haz_o          (csr_data_li[8])
-     ,.long_haz_o             (csr_data_li[9])
-     ,.data_haz_o             (csr_data_li[10])
-     ,.aux_dep_o              (csr_data_li[11])
-     ,.load_dep_o             (csr_data_li[12])
-     ,.mul_dep_o              (csr_data_li[13])
-     ,.fma_dep_o              (csr_data_li[14])
-     ,.sb_iraw_dep_o          (csr_data_li[15])
-     ,.sb_fraw_dep_o          (csr_data_li[16])
-     ,.sb_iwaw_dep_o          (csr_data_li[17])
-     ,.sb_fwaw_dep_o          (csr_data_li[18])
-     ,.struct_haz_o           (csr_data_li[19])
-     ,.idiv_haz_o             (csr_data_li[20])
-     ,.fdiv_haz_o             (csr_data_li[21])
-     ,.ptw_busy_o             (csr_data_li[22])
-     ,.special_o              (csr_data_li[23])
-     ,.replay_o               (csr_data_li[24])
-     ,.exception_o            (csr_data_li[25])
-     ,._interrupt_o           (csr_data_li[26])
-     ,.itlb_miss_o            (csr_data_li[27])
-     ,.dtlb_miss_o            (csr_data_li[28])
-     ,.dcache_miss_o          (csr_data_li[29])
-     ,.unknown_o              (csr_data_li[30])
-     ,.mem_instr_o            (csr_data_li[31])
-     ,.aux_instr_o            (csr_data_li[32])
-     ,.fma_instr_o            (csr_data_li[33])
-     ,.ilong_instr_o          (csr_data_li[34])
-     ,.flong_instr_o          (csr_data_li[35])
-     );
-
-   logic [2:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
+   logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
    logic                                        pl_to_ps_fifo_v_li, pl_to_ps_fifo_ready_lo;
    logic                                        ps_to_pl_fifo_v_lo, ps_to_pl_fifo_ready_li;
@@ -291,8 +186,11 @@ module top_zynq
    logic                                        bp_axi_rvalid;
    logic                                        bp_axi_rready;
 
-   localparam debug_lp = 0;
-   localparam memory_upper_limit_lp = 241*1024*1024;
+   // BlackParrot reset signal is connected to a CSR (along with
+   // the AXI interface reset) so that a regression can be launched
+   // without having to reload the bitstream
+   wire bp_reset_li = (~csr_data_lo[0][0]) || (~s01_axi_aresetn);
+   wire counter_en_li = csr_data_lo[3][0];
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
@@ -301,14 +199,14 @@ module top_zynq
    // Connect Shell to AXI Bus Interface S00_AXI
    bsg_zynq_pl_shell #
      (
-      .num_regs_ps_to_pl_p (3)
+      .num_regs_ps_to_pl_p (4)
       // standard memory map for all blackparrot instances should be
       //
       // 0: reset for bp (low true); note: it is only legal to assert reset if you are
       //    finished with all AXI transactions (fixme: potential improvement to detect this)
       // 4: = 1 if the DRAM has been allocated for the device in the ARM PS Linux subsystem
       // 8: the base register for the allocated dram
-      //
+      // C: stall counter enable
 
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
@@ -433,23 +331,13 @@ module top_zynq
    //
    //
 
-   logic [31:0] waddr_offset, raddr_offset;
+   // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
+   // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
+   assign waddr_translated_lo = {~s01_axi_awaddr[29], 3'b0, s01_axi_awaddr[0+:28]};
 
-   always_comb
-     begin
-        // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
-        // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
-
-        waddr_translated_lo = {~s01_axi_awaddr[29], 3'b0, s01_axi_awaddr[0+:28]};
-     end
-
-   always_comb
-     begin
-        // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
-        // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
-
-        raddr_translated_lo = {~s01_axi_araddr[29], 3'b0, s01_axi_araddr[0+:28]};
-     end
+   // Zynq PA 0x8000_0000 .. 0x8FFF_FFFF -> AXI 0x0000_0000 .. 0x0FFF_FFFF -> BP 0x8000_0000 - 0x8FFF_FFFF
+   // Zynq PA 0xA000_0000 .. 0xAFFF_FFFF -> AXI 0x2000_0000 .. 0x2FFF_FFFF -> BP 0x0000_0000 - 0x0FFF_FFFF
+   assign raddr_translated_lo = {~s01_axi_araddr[29], 3'b0, s01_axi_araddr[0+:28]};
 
    // TODO: The widths here are weird
    logic [C_S01_AXI_ADDR_WIDTH-1 : 0]           s02_axi_awaddr;
@@ -592,34 +480,8 @@ module top_zynq
    // to translate from BP DRAM space to ARM PS DRAM space
    // we xor-subtract the BP DRAM base address (32'h8000_0000) and add the
    // ARM PS allocated memory space physical address.
-
-   always @(negedge s01_axi_aclk)
-     begin
-        if (m00_axi_awvalid && ((axi_awaddr ^ 32'h8000_0000) >= memory_upper_limit_lp))
-          $display("top_zynq: unexpectedly high DRAM write: %x",axi_awaddr);
-        if (m00_axi_arvalid && ((axi_araddr ^ 32'h8000_0000) >= memory_upper_limit_lp))
-          $display("top_zynq: unexpectedly high DRAM read: %x",axi_araddr);
-     end
-
    assign m00_axi_awaddr = (axi_awaddr ^ 32'h8000_0000) + csr_data_lo[2];
    assign m00_axi_araddr = (axi_araddr ^ 32'h8000_0000) + csr_data_lo[2];
-
-   // synopsys translate_off
-
-   always @(negedge m00_axi_aclk)
-     if (m00_axi_awvalid & m00_axi_awready)
-       if (debug_lp) $display("top_zynq: (BP DRAM) AXI Write Addr %x -> %x (AXI HP0)",axi_awaddr,m00_axi_awaddr);
-
-   always @(negedge s01_axi_aclk)
-     if (m00_axi_arvalid & m00_axi_arready)
-       if (debug_lp) $display("top_zynq: (BP DRAM) AXI Write Addr %x -> %x (AXI HP0)",axi_araddr,m00_axi_araddr);
-
-   // synopsys translate_on
-   // BlackParrot reset signal is connected to a CSR (along with
-   // the AXI interface reset) so that a regression can be launched
-   // without having to reload the bitstream
-   wire bp_reset_li = (~csr_data_lo[0][0]) || (~s01_axi_aresetn);
-
 
    bsg_dff_reset #(.width_p(128)) dff
      (.clk_i(s01_axi_aclk)
@@ -737,16 +599,132 @@ module top_zynq
       ,.m_axi_rresp_i    (m00_axi_rresp)
       );
 
-   // synopsys translate_off
-   always @(negedge s01_axi_aclk)
-     if (s01_axi_awvalid & s01_axi_awready)
-       if (debug_lp) $display("top_zynq: AXI Write Addr %x -> %x (BP)",s01_axi_awaddr,waddr_translated_lo);
+   bp_stall_counters
+    #(.bp_params_p(bp_params_p)
+     ,.width_p(64)
+     )
+     stall_counters
+     (.clk_i(s01_axi_aclk)
+     ,.reset_i(bp_reset_li)
+     ,.freeze_i(`COREPATH.be.calculator.pipe_sys.csr.cfg_bus_cast_i.freeze)
+     ,.en_i(counter_en_li)
 
-   always @(negedge s01_axi_aclk)
-     if (s01_axi_arvalid & s01_axi_arready)
-       if (debug_lp) $display("top_zynq: AXI Read Addr %x -> %x (BP)",s01_axi_araddr,raddr_translated_lo);
+     ,.fe_queue_ready_i(`COREPATH.fe.fe_queue_ready_i)
+     ,.fe_icache_ready_i(`COREPATH.fe.icache.ready_o)
+
+     ,.if2_v_i(`COREPATH.fe.v_if2_r)
+     ,.br_ovr_i(`COREPATH.fe.pc_gen.ovr_taken)
+     ,.ret_ovr_i(`COREPATH.fe.pc_gen.ovr_ret)
+     ,.icache_data_v_i(`COREPATH.fe.icache.data_v_o)
+
+     ,.fe_cmd_nonattaboy_i(`COREPATH.fe.fe_cmd_yumi_o & ~`COREPATH.fe.attaboy_v)
+     ,.fe_cmd_fence_i(`COREPATH.be.director.suppress_iss_o)
+     ,.fe_queue_empty_i(~`COREPATH.be.scheduler.fe_queue_fifo.fe_queue_v_o)
+
+     ,.mispredict_i(`COREPATH.be.director.npc_mismatch_v)
+     ,.dcache_miss_i(~`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
+     ,.long_haz_i(`COREPATH.be.detector.long_haz_v)
+     ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
+     ,.data_haz_i(`COREPATH.be.detector.data_haz_v)
+     ,.aux_dep_i((`COREPATH.be.detector.dep_status_r[0].aux_iwb_v
+                | `COREPATH.be.detector.dep_status_r[0].aux_fwb_v
+                ) & `COREPATH.be.detector.data_haz_v
+               )
+     ,.load_dep_i((`COREPATH.be.detector.dep_status_r[0].emem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].fmem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[1].fmem_iwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].emem_fwb_v
+                   | `COREPATH.be.detector.dep_status_r[0].fmem_fwb_v
+                   | `COREPATH.be.detector.dep_status_r[1].fmem_fwb_v
+                   ) & `COREPATH.be.detector.data_haz_v
+                  )
+     ,.mul_dep_i((`COREPATH.be.detector.dep_status_r[0].mul_iwb_v
+                  | `COREPATH.be.detector.dep_status_r[1].mul_iwb_v
+                  | `COREPATH.be.detector.dep_status_r[2].mul_iwb_v
+                  ) & `COREPATH.be.detector.data_haz_v
+                 )
+     ,.fma_dep_i((`COREPATH.be.detector.dep_status_r[0].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[1].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[2].fma_fwb_v
+                | `COREPATH.be.detector.dep_status_r[3].fma_fwb_v
+                ) & `COREPATH.be.detector.data_haz_v
+               )
+     ,.sb_iraw_dep_i((`COREPATH.be.detector.irs1_sb_raw_haz_v
+                    | `COREPATH.be.detector.irs2_sb_raw_haz_v
+                    ) & `COREPATH.be.detector.data_haz_v
+                   )
+     ,.sb_fraw_dep_i((`COREPATH.be.detector.frs1_sb_raw_haz_v
+                    | `COREPATH.be.detector.frs2_sb_raw_haz_v
+                    | `COREPATH.be.detector.frs3_sb_raw_haz_v
+                    ) & `COREPATH.be.detector.data_haz_v
+                   )
+     ,.sb_iwaw_dep_i(`COREPATH.be.detector.ird_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
+     ,.sb_fwaw_dep_i(`COREPATH.be.detector.frd_sb_waw_haz_v & `COREPATH.be.detector.data_haz_v)
+     ,.struct_haz_i(`COREPATH.be.detector.struct_haz_v)
+     ,.idiv_haz_i(~`COREPATH.be.detector.idiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.fdiv_haz_i(~`COREPATH.be.detector.fdiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
+     ,.ptw_busy_i(`COREPATH.be.detector.ptw_busy_i)
+
+     ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
+     ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
+
+
+     ,.mcycle_o               (csr_data_li[0])
+     ,.minstret_o             (csr_data_li[1])
+     ,.icache_miss_o          (csr_data_li[2])
+     ,.branch_override_o      (csr_data_li[3])
+     ,.ret_override_o         (csr_data_li[4])
+     ,.fe_cmd_o               (csr_data_li[5])
+     ,.fe_cmd_fence_o         (csr_data_li[6])
+     ,.mispredict_o           (csr_data_li[7])
+     ,.control_haz_o          (csr_data_li[8])
+     ,.long_haz_o             (csr_data_li[9])
+     ,.data_haz_o             (csr_data_li[10])
+     ,.aux_dep_o              (csr_data_li[11])
+     ,.load_dep_o             (csr_data_li[12])
+     ,.mul_dep_o              (csr_data_li[13])
+     ,.fma_dep_o              (csr_data_li[14])
+     ,.sb_iraw_dep_o          (csr_data_li[15])
+     ,.sb_fraw_dep_o          (csr_data_li[16])
+     ,.sb_iwaw_dep_o          (csr_data_li[17])
+     ,.sb_fwaw_dep_o          (csr_data_li[18])
+     ,.struct_haz_o           (csr_data_li[19])
+     ,.idiv_haz_o             (csr_data_li[20])
+     ,.fdiv_haz_o             (csr_data_li[21])
+     ,.ptw_busy_o             (csr_data_li[22])
+     ,.special_o              (csr_data_li[23])
+     ,.replay_o               (csr_data_li[24])
+     ,.exception_o            (csr_data_li[25])
+     ,._interrupt_o           (csr_data_li[26])
+     ,.itlb_miss_o            (csr_data_li[27])
+     ,.dtlb_miss_o            (csr_data_li[28])
+     ,.dcache_miss_o          (csr_data_li[29])
+     ,.unknown_o              (csr_data_li[30])
+     ,.mem_instr_o            (csr_data_li[31])
+     ,.aux_instr_o            (csr_data_li[32])
+     ,.fma_instr_o            (csr_data_li[33])
+     ,.ilong_instr_o          (csr_data_li[34])
+     ,.flong_instr_o          (csr_data_li[35])
+     );
+
+   // synopsys translate_off
+   always @(negedge s01_axi_aclk) begin
+     if (debug_lp) begin
+       if (s01_axi_awvalid & s01_axi_awready)
+         $display("top_zynq: AXI Write Addr %x -> %x (BP)",s01_axi_awaddr,waddr_translated_lo);
+       if (s01_axi_arvalid & s01_axi_arready)
+         $display("top_zynq: AXI Read Addr %x -> %x (BP)",s01_axi_araddr,raddr_translated_lo);
+       if (m00_axi_awvalid & m00_axi_awready)
+         $display("top_zynq: (BP DRAM) AXI Write Addr %x -> %x (AXI HP0)",axi_awaddr,m00_axi_awaddr);
+       if (m00_axi_arvalid & m00_axi_arready)
+         $display("top_zynq: (BP DRAM) AXI Write Addr %x -> %x (AXI HP0)",axi_araddr,m00_axi_araddr);
+     end
+
+     if (m00_axi_awvalid && ((axi_awaddr ^ 32'h8000_0000) >= memory_upper_limit_lp))
+       $display("top_zynq: unexpectedly high DRAM write: %x",axi_awaddr);
+     if (m00_axi_arvalid && ((axi_araddr ^ 32'h8000_0000) >= memory_upper_limit_lp))
+       $display("top_zynq: unexpectedly high DRAM read: %x",axi_araddr);
+   end
    // synopsys translate_on
 
-
 endmodule
-

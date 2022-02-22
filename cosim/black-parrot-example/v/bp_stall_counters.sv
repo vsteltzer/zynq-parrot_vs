@@ -15,6 +15,7 @@ module bp_stall_counters
    (input clk_i
     , input reset_i
     , input freeze_i
+    , input en_i
 
     , input fe_queue_ready_i
     , input fe_icache_ready_i
@@ -117,7 +118,7 @@ module bp_stall_counters
    (.clk_i(clk_i)                                            \
    ,.reset_i(reset_i)                                        \
    ,.clear_i(freeze_i)                                       \
-   ,.up_i(stall_v & (prof.bp_stall_reason_enum == ``name``))    \
+   ,.up_i(en_i & stall_v & (prof.bp_stall_reason_enum == ``name``))    \
    ,.count_o(``name``_o)                                     \
    );
 
@@ -156,7 +157,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(stall_v & (prof.bp_stall_reason_enum == unknown))
+    ,.up_i(en_i & stall_v & (prof.bp_stall_reason_enum == unknown))
     ,.count_o(unknown_o)
     );
 
@@ -166,7 +167,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(1'b1)
+    ,.up_i(en_i)
     ,.count_o(mcycle_o)
     );
 
@@ -176,7 +177,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(prof.commit_pkt.instret)
+    ,.up_i(en_i & prof.commit_pkt.instret)
     ,.count_o(minstret_o)
     );
 
@@ -199,7 +200,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(instret & mem_instr_v)
+    ,.up_i(en_i & instret & mem_instr_v)
     ,.count_o(mem_instr_o)
     );
 
@@ -209,7 +210,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(instret & aux_instr_v)
+    ,.up_i(en_i & instret & aux_instr_v)
     ,.count_o(aux_instr_o)
     );
 
@@ -219,7 +220,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(instret & fma_instr_v)
+    ,.up_i(en_i & instret & fma_instr_v)
     ,.count_o(fma_instr_o)
     );
 
@@ -229,7 +230,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(instret & ilong_instr_v)
+    ,.up_i(en_i & instret & ilong_instr_v)
     ,.count_o(ilong_instr_o)
     );
 
@@ -239,7 +240,7 @@ module bp_stall_counters
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(instret & flong_instr_v)
+    ,.up_i(en_i & instret & flong_instr_v)
     ,.count_o(flong_instr_o)
     );
 

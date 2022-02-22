@@ -97,14 +97,14 @@ extern "C" void cosim_main(char *argstr) {
 
   // the read memory map is essentially
   //
-  // 0,4,8: reset, dram allocated, dram base address
-  // C: pl to ps fifo
-  // 10: pl to ps fifo count
-  // 14: ps to pl fifo count
+  // 0,4,8,C: reset, dram allocated, dram base address, counter enable
+  // 10: pl to ps fifo
+  // 14: pl to ps fifo count
+  // 18: ps to pl fifo count
 
   // the write memory map is essentially
   //
-  // 0,4,8: registers
+  // 0,4,8,C: registers
   // 10: ps to pl fifo
 
   int data;
@@ -177,20 +177,12 @@ extern "C" void cosim_main(char *argstr) {
 
   bsg_pr_info("ps.cpp: asserting reset to BP\n");
 
-  // Assert reset, we do it repeatedly just to make sure that enough cycles pass
-  zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x0, mask1);
-  assert((zpl->axil_read(0x0 + GP0_ADDR_BASE) == (0)));
-  zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x0, mask1);
-  assert((zpl->axil_read(0x0 + GP0_ADDR_BASE) == (0)));
-  zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x0, mask1);
-  assert((zpl->axil_read(0x0 + GP0_ADDR_BASE) == (0)));
+  // Assert reset
   zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x0, mask1);
   assert((zpl->axil_read(0x0 + GP0_ADDR_BASE) == (0)));
 
   // Deassert reset
   bsg_pr_info("ps.cpp: deasserting reset to BP\n");
-  zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x1, mask1);
-  zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x1, mask1);
   zpl->axil_write(0x0 + GP0_ADDR_BASE, 0x1, mask1);
 
   bsg_pr_info("Reset asserted and deasserted\n");
@@ -279,9 +271,13 @@ extern "C" void cosim_main(char *argstr) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
   unsigned long long mtime_start = get_counter_64(zpl, 0x20000000 + 0x30bff8 + GP1_ADDR_BASE);
-  unsigned long long mcycle_start = get_counter_64(zpl, 0x28 + GP0_ADDR_BASE);
-  unsigned long long minstret_start = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
+  unsigned long long mcycle_start = get_counter_64(zpl, 0x2C + GP0_ADDR_BASE);
+  unsigned long long minstret_start = get_counter_64(zpl, 0x34 + GP0_ADDR_BASE);
   bsg_pr_dbg_ps("ps.cpp: finished nbf load\n");
+
+  bsg_pr_info("ps.cpp: asserting counter enable\n");
+  zpl->axil_write(0xC + GP0_ADDR_BASE, 0x1, mask1);
+
   bsg_pr_info("ps.cpp: polling i/o\n");
 
 #ifdef FPGA
@@ -299,12 +295,15 @@ extern "C" void cosim_main(char *argstr) {
     }
 #endif
     // keep reading as long as there is data
-    data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
+    data = zpl->axil_read(0x14 + GP0_ADDR_BASE);
     if (data != 0) {
-      data = zpl->axil_read(0xC + GP0_ADDR_BASE);
+      data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
       done |= decode_bp_output(zpl, data);
-    } else if (done)
+    } else if (done) {
+      // deasserting counter enable
+      zpl->axil_write(0xC + GP0_ADDR_BASE, 0x0, mask1);
       break;
+    }
   }
 #ifdef FPGA
   run = false;
@@ -312,21 +311,21 @@ extern "C" void cosim_main(char *argstr) {
 #endif
 
   unsigned long long mtime_stop = get_counter_64(zpl, 0x20000000 + 0x30bff8 + GP1_ADDR_BASE);
-  unsigned long long mcycle_stop = get_counter_64(zpl, 0x28 + GP0_ADDR_BASE);
-  unsigned long long minstret_stop = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
+  unsigned long long mcycle_stop = get_counter_64(zpl, 0x2C + GP0_ADDR_BASE);
+  unsigned long long minstret_stop = get_counter_64(zpl, 0x34 + GP0_ADDR_BASE);
   clock_gettime(CLOCK_MONOTONIC, &end);
   setlocale(LC_NUMERIC, "");
   bsg_pr_info("ps.cpp: end polling i/o\n");
-  bsg_pr_info("ps.cpp: mcycle start: %'16llu (%16llx)\n",
+  bsg_pr_info("ps.cpp: mcycle start:                    %'16llu (%16llx)\n",
               mcycle_start, mcycle_start);
-  bsg_pr_info("ps.cpp: mcycle stop: %'16llu (%16llx)\n",
+  bsg_pr_info("ps.cpp: mcycle stop:                     %'16llu (%16llx)\n",
               mcycle_stop, mcycle_stop);
   unsigned long long mcycle_delta = mcycle_stop - mcycle_start;
-  bsg_pr_info("ps.cpp: mcycle delta:                  %'16llu (%16llx)\n",
+  bsg_pr_info("ps.cpp: mcycle delta:                    %'16llu (%16llx)\n",
               mcycle_delta, mcycle_delta);
-  bsg_pr_info("ps.cpp: minstret start: %'16llu (%16llx)\n",
+  bsg_pr_info("ps.cpp: minstret start:                  %'16llu (%16llx)\n",
               minstret_start, minstret_start);
-  bsg_pr_info("ps.cpp: minstret stop: %'16llu (%16llx)\n",
+  bsg_pr_info("ps.cpp: minstret stop:                   %'16llu (%16llx)\n",
               minstret_stop, minstret_stop);
   unsigned long long minstret_delta = minstret_stop - minstret_start;
   bsg_pr_info("ps.cpp: minstret delta:                  %'16llu (%16llx)\n",
@@ -347,16 +346,16 @@ extern "C" void cosim_main(char *argstr) {
   bsg_pr_info("ps.cpp: wall clock time                : %'16llu (%16llx) ns\n",
               diff_ns, diff_ns);
   bsg_pr_info(
-      "ps.cpp: sim/emul speed                 : %'16.2f BP cycles per minute\n",
+      "ps.cpp: sim/emul speed                         : %'16.2f BP cycles per minute\n",
       mtime_delta * 8 /
           ((double)(diff_ns) / (60.0 * 1000.0 * 1000.0 * 1000.0)));
 
   bsg_pr_info("ps.cpp: BP DRAM USAGE MASK (each bit is 8 MB): "
               "%-8.8x%-8.8x%-8.8x%-8.8x\n",
+              zpl->axil_read(0x28 + GP0_ADDR_BASE),
               zpl->axil_read(0x24 + GP0_ADDR_BASE),
               zpl->axil_read(0x20 + GP0_ADDR_BASE),
-              zpl->axil_read(0x1C + GP0_ADDR_BASE),
-              zpl->axil_read(0x18 + GP0_ADDR_BASE));
+              zpl->axil_read(0x1C + GP0_ADDR_BASE));
 
   report(zpl, argv[1]);
 #ifdef FPGA
@@ -487,9 +486,9 @@ bool decode_bp_output(bp_zynq_pl *zpl, int data) {
   else {
     if (address == 0x100000) {
       if (getchar_queue.empty()) {
-        zpl->axil_write(0xC + GP0_ADDR_BASE, -1, 0xf);
+        zpl->axil_write(0x10 + GP0_ADDR_BASE, -1, 0xf);
       } else {
-        zpl->axil_write(0xC + GP0_ADDR_BASE, getchar_queue.front(), 0xf);
+        zpl->axil_write(0x10 + GP0_ADDR_BASE, getchar_queue.front(), 0xf);
         getchar_queue.pop();
       }
     } else {
@@ -514,7 +513,7 @@ void report(bp_zynq_pl *zpl, char* nbf_filename) {
     file << nbf_filename << endl;
     for(int i=0; i<sizeof(metrics)/sizeof(metrics[0]); i++) {
       file << metrics[i] << "\t";
-      file << get_counter_64(zpl, GP0_ADDR_BASE + 0x28 + i*8) << "\n";
+      file << get_counter_64(zpl, GP0_ADDR_BASE + 0x2C + i*8) << "\n";
     }
     file.close();
   }
@@ -551,12 +550,12 @@ void sample(bp_zynq_pl *zpl, char* nbf_filename) {
     while(run) {
       std::this_thread::sleep_for(100ms);
       for(int i=0; i<sizeof(samples)/sizeof(samples[0]); i++) {
-        unsigned long long sample = get_counter_64(zpl,GP0_ADDR_BASE + 0x28 + 8*sampleIdx[i]);
+        unsigned long long sample = get_counter_64(zpl,GP0_ADDR_BASE + 0x2C + 8*sampleIdx[i]);
         file.write((char*)&sample, sizeof(sample));
       }
     }
     file.close();
   }
-  else printf("Cannot open ipc file: %s\n", filename);
+  else printf("Cannot open sample file: %s\n", filename);
 }
 #endif
