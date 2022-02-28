@@ -157,9 +157,10 @@ module top_zynq
       `define COREPATH blackparrot.m.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal
    `else
       `define COREPATH blackparrot.u.unicore.unicore_lite.core_minimal
+      `define L2PATH blackparrot.u.unicore.l2s
    `endif
 
-   localparam counter_num_p = 36;
+   localparam counter_num_p = 39;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
    logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
@@ -599,6 +600,12 @@ module top_zynq
       ,.m_axi_rresp_i    (m00_axi_rresp)
       );
 
+   logic [l2_banks_p-1:0] l2_ready_li, l2_miss_done_li;
+   for (genvar i = 0; i < l2_banks_p; i++) begin : bank_sel
+     assign l2_ready_li[i] = `L2PATH.bank[i].cache.ready_o;
+     assign l2_miss_done_li[i] = `L2PATH.bank[i].cache.miss_done_lo;
+   end
+
    bp_stall_counters
     #(.bp_params_p(bp_params_p)
      ,.width_p(64)
@@ -610,7 +617,7 @@ module top_zynq
      ,.en_i(counter_en_li)
 
      ,.fe_queue_ready_i(`COREPATH.fe.fe_queue_ready_i)
-     ,.fe_icache_ready_i(`COREPATH.fe.icache.ready_o)
+     ,.icache_ready_i(`COREPATH.fe.icache.ready_o)
 
      ,.if2_v_i(`COREPATH.fe.v_if2_r)
      ,.br_ovr_i(`COREPATH.fe.pc_gen.ovr_taken)
@@ -622,7 +629,7 @@ module top_zynq
      ,.fe_queue_empty_i(~`COREPATH.be.scheduler.fe_queue_fifo.fe_queue_v_o)
 
      ,.mispredict_i(`COREPATH.be.director.npc_mismatch_v)
-     ,.dcache_miss_i(~`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
+     ,.dcache_ready_i(`COREPATH.be.calculator.pipe_mem.dcache.ready_o)
      ,.long_haz_i(`COREPATH.be.detector.long_haz_v)
      ,.control_haz_i(`COREPATH.be.detector.control_haz_v)
      ,.data_haz_i(`COREPATH.be.detector.data_haz_v)
@@ -665,6 +672,10 @@ module top_zynq
      ,.fdiv_haz_i(~`COREPATH.be.detector.fdiv_ready_i & `COREPATH.be.detector.isd_status_cast_i.long_v)
      ,.ptw_busy_i(`COREPATH.be.detector.ptw_busy_i)
 
+     ,.l2_bank_i(`L2PATH.cce_to_cache.cache_resp_bank_lo)
+     ,.l2_ready_i(l2_ready_li)
+     ,.l2_miss_done_i(l2_miss_done_li)
+
      ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
      ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
 
@@ -699,12 +710,15 @@ module top_zynq
      ,.itlb_miss_o            (csr_data_li[27])
      ,.dtlb_miss_o            (csr_data_li[28])
      ,.dcache_miss_o          (csr_data_li[29])
-     ,.unknown_o              (csr_data_li[30])
-     ,.mem_instr_o            (csr_data_li[31])
-     ,.aux_instr_o            (csr_data_li[32])
-     ,.fma_instr_o            (csr_data_li[33])
-     ,.ilong_instr_o          (csr_data_li[34])
-     ,.flong_instr_o          (csr_data_li[35])
+     ,.l2_miss_o              (csr_data_li[30])
+     ,.unknown_o              (csr_data_li[31])
+     ,.mem_instr_o            (csr_data_li[32])
+     ,.aux_instr_o            (csr_data_li[33])
+     ,.fma_instr_o            (csr_data_li[34])
+     ,.ilong_instr_o          (csr_data_li[35])
+     ,.flong_instr_o          (csr_data_li[36])
+     ,.l2_miss_cnt_o          (csr_data_li[37])
+     ,.l2_miss_wait_o         (csr_data_li[38])
      );
 
    // synopsys translate_off

@@ -11,6 +11,7 @@ module bp_stall_counters
 
     , localparam commit_pkt_width_lp = `bp_be_commit_pkt_width(vaddr_width_p, paddr_width_p)
     , localparam retire_pkt_width_lp = `bp_be_retire_pkt_width(vaddr_width_p)
+    , localparam lg_l2_banks_lp = `BSG_SAFE_CLOG2(l2_banks_p)
     )
    (input clk_i
     , input reset_i
@@ -18,7 +19,7 @@ module bp_stall_counters
     , input en_i
 
     , input fe_queue_ready_i
-    , input fe_icache_ready_i
+    , input icache_ready_i
 
     , input if2_v_i
     , input br_ovr_i
@@ -29,7 +30,7 @@ module bp_stall_counters
     , input fe_cmd_fence_i
     , input fe_queue_empty_i
 
-    , input dcache_miss_i
+    , input dcache_ready_i
     , input mispredict_i
     , input long_haz_i
     , input control_haz_i
@@ -46,6 +47,10 @@ module bp_stall_counters
     , input idiv_haz_i
     , input fdiv_haz_i
     , input ptw_busy_i
+
+    , input [lg_l2_banks_lp-1:0] l2_bank_i
+    , input [l2_banks_p-1:0] l2_ready_i
+    , input [l2_banks_p-1:0] l2_miss_done_i
 
     , input [retire_pkt_width_lp-1:0] retire_pkt_i
     , input [commit_pkt_width_lp-1:0] commit_pkt_i
@@ -88,6 +93,7 @@ module bp_stall_counters
     , output [width_p-1:0] itlb_miss_o
     , output [width_p-1:0] dtlb_miss_o
     , output [width_p-1:0] dcache_miss_o
+    , output [width_p-1:0] l2_miss_o
 
     , output [width_p-1:0] unknown_o
 
@@ -96,6 +102,8 @@ module bp_stall_counters
     , output [width_p-1:0] fma_instr_o
     , output [width_p-1:0] ilong_instr_o
     , output [width_p-1:0] flong_instr_o
+    , output [width_p-1:0] l2_miss_cnt_o
+    , output [width_p-1:0] l2_miss_wait_o
     );
 
    bp_nonsynth_core_profiler
@@ -150,16 +158,8 @@ module bp_stall_counters
   `declare_counter(itlb_miss)
   `declare_counter(dtlb_miss)
   `declare_counter(dcache_miss)
-
-   bsg_counter_clear_up
-    #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
-    unknown_cnt
-    (.clk_i(clk_i)
-    ,.reset_i(reset_i)
-    ,.clear_i(freeze_i)
-    ,.up_i(en_i & stall_v & (prof.bp_stall_reason_enum == unknown))
-    ,.count_o(unknown_o)
-    );
+  `declare_counter(l2_miss)
+  `declare_counter(unknown)
 
    bsg_counter_clear_up
     #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
@@ -193,6 +193,7 @@ module bp_stall_counters
                       & (instr inside {`RV64_FADD_S, `RV64_FADD_D, `RV64_FSUB_S, `RV64_FSUB_D, `RV64_FMUL_S, `RV64_FMUL_D}));
    wire aux_instr_v   = (instr.opcode == `RV64_FP_OP) & ~fma_instr_v & ~flong_instr_v;
    wire mem_instr_v   = (instr.opcode inside {`RV64_LOAD_OP, `RV64_FLOAD_OP, `RV64_STORE_OP, `RV64_FSTORE_OP, `RV64_MISC_MEM_OP, `RV64_AMO_OP});
+   wire l2_miss_v     = l2_miss_done_i[l2_bank_i];
 
    bsg_counter_clear_up
     #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
@@ -242,6 +243,26 @@ module bp_stall_counters
     ,.clear_i(freeze_i)
     ,.up_i(en_i & instret & flong_instr_v)
     ,.count_o(flong_instr_o)
+    );
+
+   bsg_counter_clear_up
+    #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+    l2_miss_done_cnt
+    (.clk_i(clk_i)
+    ,.reset_i(reset_i)
+    ,.clear_i(freeze_i)
+    ,.up_i(en_i & l2_miss_done_i[l2_bank_i])
+    ,.count_o(l2_miss_cnt_o)
+    );
+
+   bsg_counter_clear_up
+    #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+    l2_miss_wait_cnt
+    (.clk_i(clk_i)
+    ,.reset_i(reset_i)
+    ,.clear_i(freeze_i)
+    ,.up_i(en_i & ~l2_ready_i[l2_bank_i])
+    ,.count_o(l2_miss_wait_o)
     );
 
 endmodule
