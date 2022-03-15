@@ -92,3 +92,5 @@ wait_on_run impl_1
 }
 
 puts "Completed. Type start_gui to enter vivado GUI; quit to exit"
+
+exit

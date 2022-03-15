@@ -160,7 +160,7 @@ module top_zynq
       `define L2PATH blackparrot.u.unicore.l2s
    `endif
 
-   localparam counter_num_p = 39;
+   localparam counter_num_p = 40;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
    logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
@@ -675,6 +675,8 @@ module top_zynq
      ,.l2_bank_i(`L2PATH.cce_to_cache.cache_resp_bank_lo)
      ,.l2_ready_i(l2_ready_li)
      ,.l2_miss_done_i(l2_miss_done_li)
+     ,.dma_pkt_v_i(`L2PATH.dma_pkt_v_o)
+     ,.dma_rdata_v_i(`L2PATH.dma_data_v_i)
 
      ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
      ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
@@ -719,6 +721,7 @@ module top_zynq
      ,.flong_instr_o          (csr_data_li[36])
      ,.l2_miss_cnt_o          (csr_data_li[37])
      ,.l2_miss_wait_o         (csr_data_li[38])
+     ,.dma_wait_o             (csr_data_li[39])
      );
 
    // synopsys translate_off

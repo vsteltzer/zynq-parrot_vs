@@ -48,7 +48,7 @@ const char* metrics[] = {
   "ptw_busy", "special", "replay", "exception", "_interrupt",
   "itlb_miss", "dtlb_miss", "dcache_miss", "l2_miss", "unknown",
   "mem_instr", "aux_instr", "fma_instr", "ilong_instr", "flong_instr",
-  "l2_miss_cnt", "l2_miss_wait"
+  "l2_miss_cnt", "l2_miss_wait", "dma_wait"
 };
 
 const char* samples[] = {
