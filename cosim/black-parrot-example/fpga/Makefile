@@ -36,7 +36,13 @@ $(FLIST): $(BLACKPARROT_DIR)/bp_top/syn/flist.vcs $(BASE_FLIST)
 	echo "+incdir+$(COSIM_DIR)/include/fpga" >> $@
 	# Replace hardened memory which is incorrectly inferred on some Xilinx FPGAs
 	cat $^ | envsubst >> $@
+	sed -i "/bsg_mem_1rw_sync.v/d" $@
+	sed -i "/bsg_mem_1rw_sync_synth.v/d" $@
 	sed -i "/bsg_mem_1rw_sync_mask_write_bit.v/d" $@
 	sed -i "/bsg_mem_1rw_sync_mask_write_bit_synth.v/d" $@
+	sed -i "/bsg_mem_1rw_sync_mask_write_byte.v/d" $@
+	sed -i "/bsg_mem_1rw_sync_mask_write_byte_synth.v/d" $@
+	echo "$(BASEJUMP_STL_DIR)/hard/ultrascale_plus/bsg_mem/bsg_mem_1rw_sync.v" >> $@
+	echo "$(BASEJUMP_STL_DIR)/hard/ultrascale_plus/bsg_mem/bsg_mem_1rw_sync_mask_write_byte.v" >> $@
 	echo "$(BASEJUMP_STL_DIR)/hard/ultrascale_plus/bsg_mem/bsg_mem_1rw_sync_mask_write_bit.v" >> $@
 
