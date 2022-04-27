@@ -32,15 +32,16 @@ bool run = true;
 
 const char* metrics[] = {
   "mcycle", "minstret",
-  "iq_full", "ic_invl", "ic_miss", "ic_flush", "ic_atrans",
+  "iq_full", "ic_invl", "ic_miss", "ic_dma", "ic_flush", "ic_atrans",
   "bp_haz", "ireplay", "realign", "sb_full",
-  "waw_flu", "waw_ld_pipe", "waw_ld_grant", "waw_ld_pgoff", "waw_dcache",
-  "waw_fpu", "waw_reorder", "raw_flu",
-  "raw_ld_pipe", "raw_ld_grant", "raw_ld_pgoff", "raw_dcache",
-  "raw_fpu", "br_haz", "mul_haz", "flu_busy",
-  "lsu_busy_ld_grant", "lsu_busy_ld_pgoff",
-  "lsu_busy_st_buffer", "lsu_busy_other",
-  "fpu_busy", "br_miss", "amo_flush", "csr_flush", "exception", "unknown"
+  "waw_flu", "waw_lsu", "waw_fpu", "waw_reorder",
+  "raw_flu", "raw_lsu", "raw_fpu",
+  "br_haz", "br_miss", "mul_haz", "csr_buf", "div_busy",
+  "ld_pipe", "ld_grant", "ls_sbuf", "ld_dcache",
+  "st_pipe", "sbuf_spec", "fpu_busy",
+  "amo_flush", "csr_flush", "exception",
+  "cmt_haz", "sbuf_cmt", "dc_dma", "unknown",
+  "wdma_cnt", "rdma_cnt", "wdma_wait", "rdma_wait"
 };
 
 const char* samples[] = {

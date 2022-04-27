@@ -154,7 +154,7 @@ module top_zynq
 
    `define COREPATH ariane.i_ariane
 
-   localparam csr_num_lp = 37;
+   localparam csr_num_lp = 42;
    logic [csr_num_lp-1:0][64-1:0] csr_data_li;
 
   bsg_dff_reset_en #(
@@ -177,91 +177,124 @@ module top_zynq
     .data_o(csr_data_li[1])
   );
 
-  ariane_issue_profiler #(
+  ariane_commit_profiler #(
     .width_p(64)
   ) i_profiler (
-    .clk_i(s01_axi_aclk),
-    .reset_i(~core_resetn_li),
-    .en_i(counter_en_li),
+    .clk_i(s01_axi_aclk)
+    ,.reset_i(~core_resetn_li)
+    ,.en_i(counter_en_li)
 
-    .instr_qeueu_valid_i(`COREPATH.i_frontend.fetch_entry_valid_o),
-    .instr_queue_ready_i(`COREPATH.i_frontend.i_instr_queue.ready_o),
-    .fe_bp_valid_i(`COREPATH.i_frontend.bp_valid),
-    .fe_replay_i(`COREPATH.i_frontend.replay),
-    .fe_realign_bubble_i(`COREPATH.i_frontend.icache_valid_q & ~(|`COREPATH.i_frontend.instruction_valid)),
+    ,.instr_qeueu_valid_i(`COREPATH.i_frontend.fetch_entry_valid_o)
+    ,.instr_queue_ready_i(`COREPATH.i_frontend.i_instr_queue.ready_o)
+    ,.fe_bp_valid_i(`COREPATH.i_frontend.bp_valid)
+    ,.fe_replay_i(`COREPATH.i_frontend.replay)
+    ,.fe_realign_bubble_i(`COREPATH.i_frontend.icache_valid_q & ~(|`COREPATH.i_frontend.instruction_valid))
 
-    .icache_valid_i(`COREPATH.i_frontend.icache_dreq_i.valid),
-    .icache_ready_i(`COREPATH.i_frontend.icache_dreq_i.ready),
-    .icache_flush_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.flush_d),
-    .icache_rtrn_vld_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.mem_rtrn_vld_i),
-    .icache_hit_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.hit),
-    .icache_state_q_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_q),
-    .icache_state_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_d),
+    ,.icache_valid_i(`COREPATH.i_frontend.icache_dreq_i.valid)
+    ,.icache_ready_i(`COREPATH.i_frontend.icache_dreq_i.ready)
+    ,.icache_flush_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.flush_d)
+    ,.icache_rtrn_vld_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.mem_rtrn_vld_i)
+    ,.icache_hit_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.hit)
+    ,.icache_state_q_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_q)
+    ,.icache_state_d_i(`COREPATH.i_cache_subsystem.i_cva6_icache_axi_wrapper.i_cva6_icache.state_d)
 
-    .flush_unissued_instr_i(`COREPATH.controller_i.flush_unissued_instr_o),
-    .flush_ex_i(`COREPATH.controller_i.flush_ex_o),
-    .branch_mispredict_i(`COREPATH.controller_i.resolved_branch_i.is_mispredict),
-    .flush_amo_i(`COREPATH.controller_i.flush_commit_i),
-    .flush_csr_i(`COREPATH.controller_i.flush_csr_i),
-    .exception_i(`COREPATH.controller_i.ex_valid_i | `COREPATH.controller_i.eret_i),
+    ,.flush_unissued_instr_i(`COREPATH.controller_i.flush_unissued_instr_o)
+    ,.flush_ex_i(`COREPATH.controller_i.flush_ex_o)
+    ,.branch_mispredict_i(`COREPATH.controller_i.resolved_branch_i.is_mispredict)
+    ,.flush_amo_i(`COREPATH.controller_i.flush_commit_i)
+    ,.flush_csr_i(`COREPATH.controller_i.flush_csr_i)
+    ,.exception_i(`COREPATH.controller_i.ex_valid_i | `COREPATH.controller_i.eret_i)
 
-    .is_valid_i(`COREPATH.issue_stage_i.decoded_instr_valid_i),
-    .is_ack_i(`COREPATH.issue_stage_i.decoded_instr_ack_o),
-    .is_unresolved_branch_i(`COREPATH.issue_stage_i.i_scoreboard.unresolved_branch_i),
-    .is_sb_full_i(`COREPATH.issue_stage_i.i_scoreboard.issue_full),
-    .is_ro_mul_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.mult_valid_q
-                      & (`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu != MULT)),
-    .is_ro_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.stall),
-    .is_ro_fubusy_i(`COREPATH.issue_stage_i.i_issue_read_operands.fu_busy),
-    .is_instr_i(`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i),
-    .is_rd_clobber_gpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_gpr_i),
-    .is_rd_clobber_fpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_fpr_i),
-    .is_forward_rs1_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs1),
-    .is_forward_rs2_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs2),
-    .is_forward_rs3_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs3),
-    .is_forward_rd_i(|`COREPATH.issue_stage_i.i_scoreboard.rd_fwd_req),
+    ,.is_valid_i(`COREPATH.issue_stage_i.decoded_instr_valid_i)
+    ,.is_ack_i(`COREPATH.issue_stage_i.decoded_instr_ack_o)
+    ,.is_unresolved_branch_i(`COREPATH.issue_stage_i.i_scoreboard.unresolved_branch_i)
+    ,.is_sb_full_i(`COREPATH.issue_stage_i.i_scoreboard.issue_full)
+    ,.is_ro_mul_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.mult_valid_q 
+                     & (`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i.fu != ariane_pkg::MULT))
+    ,.is_ro_stall_i(`COREPATH.issue_stage_i.i_issue_read_operands.stall)
+    ,.is_ro_fubusy_i(`COREPATH.issue_stage_i.i_issue_read_operands.fu_busy)
+    ,.is_instr_i(`COREPATH.issue_stage_i.i_issue_read_operands.issue_instr_i)
+    ,.is_rd_clobber_gpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_gpr_i)
+    ,.is_rd_clobber_fpr_i(`COREPATH.issue_stage_i.i_issue_read_operands.rd_clobber_fpr_i)
+    ,.is_forward_rs1_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs1)
+    ,.is_forward_rs2_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs2)
+    ,.is_forward_rs3_i(`COREPATH.issue_stage_i.i_issue_read_operands.forward_rs3)
+    ,.is_forward_rd_i(|`COREPATH.issue_stage_i.i_scoreboard.rd_fwd_req)
 
-    .lsu_ctrl_i(`COREPATH.ex_stage_i.lsu_i.lsu_ctrl),
-    .pop_ld_i(`COREPATH.ex_stage_i.lsu_i.pop_ld),
-    .ld_done_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.valid_o),
-    .ld_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.state_q),
-    .st_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_store_unit.state_q),
+    ,.ex_csr_ready_i(`COREPATH.ex_stage_i.csr_ready)
+    ,.ex_div_ready_i(`COREPATH.ex_stage_i.mult_ready)
+    ,.ex_fpu_ready_i(`COREPATH.ex_stage_i.fpu_ready_o)
 
-    .iq_full_o           (csr_data_li[2]),
-    .ic_invl_o           (csr_data_li[3]),
-    .ic_miss_o           (csr_data_li[4]),
-    .ic_flush_o          (csr_data_li[5]),
-    .ic_atrans_o         (csr_data_li[6]),
-    .bp_haz_o            (csr_data_li[7]),
-    .ireplay_o           (csr_data_li[8]),
-    .realign_o           (csr_data_li[9]),
-    .sb_full_o           (csr_data_li[10]),
-    .waw_flu_o           (csr_data_li[11]),
-    .waw_ld_pipe_o       (csr_data_li[12]),
-    .waw_ld_grant_o      (csr_data_li[13]),
-    .waw_ld_pgoff_o      (csr_data_li[14]),
-    .waw_dcache_o        (csr_data_li[15]),
-    .waw_fpu_o           (csr_data_li[16]),
-    .waw_reorder_o       (csr_data_li[17]),
-    .raw_flu_o           (csr_data_li[18]),
-    .raw_ld_pipe_o       (csr_data_li[19]),
-    .raw_ld_grant_o      (csr_data_li[20]),
-    .raw_ld_pgoff_o      (csr_data_li[21]),
-    .raw_dcache_o        (csr_data_li[22]),
-    .raw_fpu_o           (csr_data_li[23]),
-    .br_haz_o            (csr_data_li[24]),
-    .mul_haz_o           (csr_data_li[25]),
-    .flu_busy_o          (csr_data_li[26]),
-    .lsu_busy_ld_grant_o (csr_data_li[27]),
-    .lsu_busy_ld_pgoff_o (csr_data_li[28]),
-    .lsu_busy_st_buffer_o(csr_data_li[29]),
-    .lsu_busy_other_o    (csr_data_li[30]),
-    .fpu_busy_o          (csr_data_li[31]),
-    .br_miss_o           (csr_data_li[32]),
-    .amo_flush_o         (csr_data_li[33]),
-    .csr_flush_o         (csr_data_li[34]),
-    .exception_o         (csr_data_li[35]),
-    .unknown_o           (csr_data_li[36])
+    ,.wb_flu_valid_i(`COREPATH.ex_stage_i.flu_valid_o)
+    ,.wb_fpu_valid_i(`COREPATH.ex_stage_i.fpu_valid_o)
+    ,.wb_ld_valid_i(`COREPATH.ex_stage_i.load_valid_o)
+    ,.wb_st_valid_i(`COREPATH.ex_stage_i.store_valid_o)
+
+    ,.lsu_ctrl_i(`COREPATH.ex_stage_i.lsu_i.lsu_ctrl)
+    ,.pop_ld_i(`COREPATH.ex_stage_i.lsu_i.pop_ld)
+    ,.ld_done_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.valid_o)
+    ,.ld_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_load_unit.state_q)
+    ,.st_state_q_i(`COREPATH.ex_stage_i.lsu_i.i_store_unit.state_q)
+
+    ,.issue_en_i(`COREPATH.issue_stage_i.i_scoreboard.issue_en)
+    ,.issue_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.issue_pointer_q)
+
+    ,.cmt_ack_i(`COREPATH.commit_stage_i.commit_ack_o[0])
+    ,.cmt_issued_q_i(`COREPATH.issue_stage_i.i_scoreboard.mem_q_commit.issued)
+    ,.cmt_lsu_ready_i(`COREPATH.commit_stage_i.commit_lsu_ready_i)
+    ,.cmt_instr_i(`COREPATH.commit_stage_i.commit_instr_i[0])
+    ,.cmt_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.commit_pointer_q[0])
+
+    ,.m_arvalid_i(m00_axi_arvalid)
+    ,.m_arready_i(m00_axi_arready)
+    ,.m_arid_i(m00_axi_arid)
+    ,.m_rlast_i(m00_axi_rvalid & m00_axi_rlast)
+
+    ,.m_awvalid_i(m00_axi_awvalid)
+    ,.m_awready_i(m00_axi_awready)
+    ,.m_awid_i(m00_axi_awid)
+    ,.m_bvalid_i(m00_axi_bvalid)
+
+    ,.iq_full_o     (csr_data_li[2])
+    ,.ic_invl_o     (csr_data_li[3])
+    ,.ic_miss_o     (csr_data_li[4])
+    ,.ic_dma_o      (csr_data_li[5])
+    ,.ic_flush_o    (csr_data_li[6])
+    ,.ic_atrans_o   (csr_data_li[7])
+    ,.bp_haz_o      (csr_data_li[8])
+    ,.ireplay_o     (csr_data_li[9])
+    ,.realign_o     (csr_data_li[10])
+    ,.sb_full_o     (csr_data_li[11])
+    ,.waw_flu_o     (csr_data_li[12])
+    ,.waw_lsu_o     (csr_data_li[13])
+    ,.waw_fpu_o     (csr_data_li[14])
+    ,.waw_reorder_o (csr_data_li[15])
+    ,.raw_flu_o     (csr_data_li[16])
+    ,.raw_lsu_o     (csr_data_li[17])
+    ,.raw_fpu_o     (csr_data_li[18])
+    ,.br_haz_o      (csr_data_li[19])
+    ,.br_miss_o     (csr_data_li[20])
+    ,.mul_haz_o     (csr_data_li[21])
+    ,.csr_buf_o     (csr_data_li[22])
+    ,.div_busy_o    (csr_data_li[23])
+    ,.ld_pipe_o     (csr_data_li[24])
+    ,.ld_grant_o    (csr_data_li[25])
+    ,.ld_sbuf_o     (csr_data_li[26])
+    ,.ld_dcache_o   (csr_data_li[27])
+    ,.st_pipe_o     (csr_data_li[28])
+    ,.sbuf_spec_o   (csr_data_li[29])
+    ,.fpu_busy_o    (csr_data_li[30])
+    ,.amo_flush_o   (csr_data_li[31])
+    ,.csr_flush_o   (csr_data_li[32])
+    ,.exception_o   (csr_data_li[33])
+    ,.cmt_haz_o     (csr_data_li[34])
+    ,.sbuf_cmt_o    (csr_data_li[35])
+    ,.dc_dma_o      (csr_data_li[36])
+    ,.unknown_o     (csr_data_li[37])
+    ,.wdma_cnt_o    (csr_data_li[38])
+    ,.rdma_cnt_o    (csr_data_li[39])
+    ,.wdma_wait_o   (csr_data_li[40])
+    ,.rdma_wait_o   (csr_data_li[41])
   );
 
    // use this as a way of figuring out how much memory a RISC-V program is using
