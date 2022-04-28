@@ -160,7 +160,7 @@ module top_zynq
       `define L2PATH blackparrot.u.unicore.l2s
    `endif
 
-   localparam counter_num_p = 40;
+   localparam counter_num_p = 45;
    logic [counter_num_p-1:0][64-1:0] csr_data_li;
    logic [3:0][C_S00_AXI_DATA_WIDTH-1:0]        csr_data_lo;
    logic [C_S00_AXI_DATA_WIDTH-1:0]             pl_to_ps_fifo_data_li, ps_to_pl_fifo_data_lo;
@@ -675,12 +675,16 @@ module top_zynq
      ,.l2_bank_i(`L2PATH.cce_to_cache.cache_resp_bank_lo)
      ,.l2_ready_i(l2_ready_li)
      ,.l2_miss_done_i(l2_miss_done_li)
-     ,.dma_pkt_v_i(`L2PATH.dma_pkt_v_o)
-     ,.dma_rdata_v_i(`L2PATH.dma_data_v_i)
+
+     ,.m_arvalid_i(m00_axi_arvalid)
+     ,.m_arready_i(m00_axi_arready)
+     ,.m_rlast_i(m00_axi_rlast)
+     ,.m_awvalid_i(m00_axi_awvalid)
+     ,.m_awready_i(m00_axi_awready)
+     ,.m_bvalid_i(m00_axi_bvalid)
 
      ,.retire_pkt_i(`COREPATH.be.calculator.pipe_sys.retire_pkt)
      ,.commit_pkt_i(`COREPATH.be.calculator.pipe_sys.commit_pkt)
-
 
      ,.mcycle_o               (csr_data_li[0])
      ,.minstret_o             (csr_data_li[1])
@@ -713,15 +717,20 @@ module top_zynq
      ,.dtlb_miss_o            (csr_data_li[28])
      ,.dcache_miss_o          (csr_data_li[29])
      ,.l2_miss_o              (csr_data_li[30])
-     ,.unknown_o              (csr_data_li[31])
-     ,.mem_instr_o            (csr_data_li[32])
-     ,.aux_instr_o            (csr_data_li[33])
-     ,.fma_instr_o            (csr_data_li[34])
-     ,.ilong_instr_o          (csr_data_li[35])
-     ,.flong_instr_o          (csr_data_li[36])
-     ,.l2_miss_cnt_o          (csr_data_li[37])
-     ,.l2_miss_wait_o         (csr_data_li[38])
-     ,.dma_wait_o             (csr_data_li[39])
+     ,.dma_o                  (csr_data_li[31])
+     ,.unknown_o              (csr_data_li[32])
+     ,.mem_instr_o            (csr_data_li[33])
+     ,.aux_instr_o            (csr_data_li[34])
+     ,.fma_instr_o            (csr_data_li[35])
+     ,.ilong_instr_o          (csr_data_li[36])
+     ,.flong_instr_o          (csr_data_li[37])
+     ,.l2_miss_cnt_o          (csr_data_li[38])
+     ,.l2_miss_wait_o         (csr_data_li[39])
+     ,.wdma_cnt_o             (csr_data_li[40])
+     ,.rdma_cnt_o             (csr_data_li[41])
+     ,.wdma_wait_o            (csr_data_li[42])
+     ,.rdma_wait_o            (csr_data_li[43])
+     ,.dma_wait_o             (csr_data_li[44])
      );
 
    // synopsys translate_off

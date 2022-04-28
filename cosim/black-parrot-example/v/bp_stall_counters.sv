@@ -51,8 +51,13 @@ module bp_stall_counters
     , input [lg_l2_banks_lp-1:0] l2_bank_i
     , input [l2_banks_p-1:0] l2_ready_i
     , input [l2_banks_p-1:0] l2_miss_done_i
-    , input [l2_banks_p-1:0] dma_pkt_v_i
-    , input [l2_banks_p-1:0] dma_rdata_v_i
+
+    , input m_arvalid_i
+    , input m_arready_i
+    , input m_rlast_i
+    , input m_awvalid_i
+    , input m_awready_i
+    , input m_bvalid_i
 
     , input [retire_pkt_width_lp-1:0] retire_pkt_i
     , input [commit_pkt_width_lp-1:0] commit_pkt_i
@@ -96,6 +101,7 @@ module bp_stall_counters
     , output [width_p-1:0] dtlb_miss_o
     , output [width_p-1:0] dcache_miss_o
     , output [width_p-1:0] l2_miss_o
+    , output [width_p-1:0] dma_o
 
     , output [width_p-1:0] unknown_o
 
@@ -106,6 +112,10 @@ module bp_stall_counters
     , output [width_p-1:0] flong_instr_o
     , output [width_p-1:0] l2_miss_cnt_o
     , output [width_p-1:0] l2_miss_wait_o
+    , output [width_p-1:0] wdma_cnt_o
+    , output [width_p-1:0] rdma_cnt_o
+    , output [width_p-1:0] wdma_wait_o
+    , output [width_p-1:0] rdma_wait_o
     , output [width_p-1:0] dma_wait_o
     );
 
@@ -162,6 +172,7 @@ module bp_stall_counters
   `declare_counter(dtlb_miss)
   `declare_counter(dcache_miss)
   `declare_counter(l2_miss)
+  `declare_counter(dma)
   `declare_counter(unknown)
 
    bsg_counter_clear_up
@@ -196,22 +207,6 @@ module bp_stall_counters
                       & (instr inside {`RV64_FADD_S, `RV64_FADD_D, `RV64_FSUB_S, `RV64_FSUB_D, `RV64_FMUL_S, `RV64_FMUL_D}));
    wire aux_instr_v   = (instr.opcode == `RV64_FP_OP) & ~fma_instr_v & ~flong_instr_v;
    wire mem_instr_v   = (instr.opcode inside {`RV64_LOAD_OP, `RV64_FLOAD_OP, `RV64_STORE_OP, `RV64_FSTORE_OP, `RV64_MISC_MEM_OP, `RV64_AMO_OP});
-   wire l2_miss_v     = l2_miss_done_i[l2_bank_i];
-   wire dma_pkt_v_li   = dma_pkt_v_i[l2_bank_i];
-   wire dma_rdata_v_li = dma_rdata_v_i[l2_bank_i];
-
-   logic dma_wait_r, dma_wait_v;
-   assign dma_wait_v = (dma_wait_r | dma_pkt_v_li) & ~dma_rdata_v_li;
-
-   bsg_dff_reset_set_clear
-    #(.width_p(2))
-    dma_reg
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      ,.set_i(dma_pkt_v_li)
-      ,.clear_i(dma_rdata_v_li)
-      ,.data_o(dma_wait_r)
-      );
 
    bsg_counter_clear_up
     #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
@@ -283,13 +278,53 @@ module bp_stall_counters
     ,.count_o(l2_miss_wait_o)
     );
 
+  bsg_counter_clear_up
+   #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+   wdma_cnt
+   (.clk_i(clk_i)
+   ,.reset_i(reset_i)
+   ,.clear_i(freeze_i)
+   ,.up_i(en_i & m_awvalid_i & m_awready_i)
+   ,.count_o(wdma_cnt_o)
+   );
+
+  bsg_counter_clear_up
+   #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+   rdma_cnt
+   (.clk_i(clk_i)
+   ,.reset_i(reset_i)
+   ,.clear_i(freeze_i)
+   ,.up_i(en_i & m_arvalid_i & m_arready_i)
+   ,.count_o(rdma_cnt_o)
+   );
+
+   bsg_counter_clear_up
+    #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+    wdma_wait_cnt
+    (.clk_i(clk_i)
+    ,.reset_i(reset_i)
+    ,.clear_i(freeze_i)
+    ,.up_i(en_i & prof.wdma_pending_r)
+    ,.count_o(wdma_wait_o)
+    );
+
+   bsg_counter_clear_up
+    #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
+    rdma_wait_cnt
+    (.clk_i(clk_i)
+    ,.reset_i(reset_i)
+    ,.clear_i(freeze_i)
+    ,.up_i(en_i & prof.rdma_pending_r)
+    ,.count_o(rdma_wait_o)
+    );
+
    bsg_counter_clear_up
     #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0))
     dma_wait_cnt
     (.clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.clear_i(freeze_i)
-    ,.up_i(en_i & dma_wait_v)
+    ,.up_i(en_i & (prof.rdma_pending_r | prof.wdma_pending_r))
     ,.count_o(dma_wait_o)
     );
 

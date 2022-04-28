@@ -30,40 +30,42 @@
     logic dtlb_miss;
     logic dcache_miss;
     logic l2_miss;
+    logic dma;
     logic unknown;
   }  bp_stall_reason_s;
 
   typedef enum logic [4:0]
   {
-    icache_miss          = 5'd29
-    ,branch_override     = 5'd28
-    ,ret_override        = 5'd27
-    ,fe_cmd              = 5'd26
-    ,fe_cmd_fence        = 5'd25
-    ,mispredict          = 5'd24
-    ,control_haz         = 5'd23
-    ,long_haz            = 5'd22
-    ,data_haz            = 5'd21
-    ,aux_dep             = 5'd20
-    ,load_dep            = 5'd19
-    ,mul_dep             = 5'd18
-    ,fma_dep             = 5'd17
-    ,sb_iraw_dep         = 5'd16
-    ,sb_fraw_dep         = 5'd15
-    ,sb_iwaw_dep         = 5'd14
-    ,sb_fwaw_dep         = 5'd13
-    ,struct_haz          = 5'd12
-    ,idiv_haz            = 5'd11
-    ,fdiv_haz            = 5'd10
-    ,ptw_busy            = 5'd9
-    ,special             = 5'd8
-    ,replay              = 5'd7
-    ,exception           = 5'd6
-    ,_interrupt          = 5'd5
-    ,itlb_miss           = 5'd4
-    ,dtlb_miss           = 5'd3
-    ,dcache_miss         = 5'd2
-    ,l2_miss             = 5'd1
+    icache_miss          = 5'd30
+    ,branch_override     = 5'd29
+    ,ret_override        = 5'd28
+    ,fe_cmd              = 5'd27
+    ,fe_cmd_fence        = 5'd26
+    ,mispredict          = 5'd25
+    ,control_haz         = 5'd24
+    ,long_haz            = 5'd23
+    ,data_haz            = 5'd22
+    ,aux_dep             = 5'd21
+    ,load_dep            = 5'd20
+    ,mul_dep             = 5'd19
+    ,fma_dep             = 5'd18
+    ,sb_iraw_dep         = 5'd17
+    ,sb_fraw_dep         = 5'd16
+    ,sb_iwaw_dep         = 5'd15
+    ,sb_fwaw_dep         = 5'd14
+    ,struct_haz          = 5'd13
+    ,idiv_haz            = 5'd12
+    ,fdiv_haz            = 5'd11
+    ,ptw_busy            = 5'd10
+    ,special             = 5'd9
+    ,replay              = 5'd8
+    ,exception           = 5'd7
+    ,_interrupt          = 5'd6
+    ,itlb_miss           = 5'd5
+    ,dtlb_miss           = 5'd4
+    ,dcache_miss         = 5'd3
+    ,l2_miss             = 5'd2
+    ,dma                 = 5'd1
     ,unknown             = 5'd0
   } bp_stall_reason_e;
 
@@ -132,9 +134,17 @@ module bp_nonsynth_core_profiler
 
     // MEM events
 
-    // L2 events
+    // L2 signals
     , input [lg_l2_banks_lp-1:0] l2_bank_i
     , input [l2_banks_p-1:0] l2_ready_i
+
+    // DMA signals
+    , input m_arvalid_i
+    , input m_arready_i
+    , input m_rlast_i
+    , input m_awvalid_i
+    , input m_awready_i
+    , input m_bvalid_i
 
     // Trap packet
     , input [retire_pkt_width_lp-1:0] retire_pkt_i
@@ -144,6 +154,14 @@ module bp_nonsynth_core_profiler
   `declare_bp_be_internal_if_structs(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
 
   localparam num_stages_p = 7;
+
+  bp_be_commit_pkt_s commit_pkt;
+  bp_be_retire_pkt_s retire_pkt;
+  assign retire_pkt = retire_pkt_i;
+  assign commit_pkt = commit_pkt_i;
+
+  wire l2_ready_li = l2_ready_i[l2_bank_i];
+
   bp_stall_reason_s [num_stages_p-1:0] stall_stage_n, stall_stage_r;
   bsg_dff_reset
    #(.width_p($bits(bp_stall_reason_s)*num_stages_p))
@@ -154,12 +172,6 @@ module bp_nonsynth_core_profiler
      ,.data_i(stall_stage_n)
      ,.data_o(stall_stage_r)
      );
-
-  bp_be_retire_pkt_s retire_pkt;
-  assign retire_pkt = retire_pkt_i;
-
-  bp_be_commit_pkt_s commit_pkt;
-  assign commit_pkt = commit_pkt_i;
 
   logic [29:0] cycle_cnt;
   bsg_counter_clear_up
@@ -173,8 +185,27 @@ module bp_nonsynth_core_profiler
      ,.count_o(cycle_cnt)
      );
 
-  logic l2_ready_li;
-  assign l2_ready_li = l2_ready_i[l2_bank_i];
+  logic rdma_pending_r, wdma_pending_r;
+  wire dma_pending_li = rdma_pending_r | wdma_pending_r;
+  bsg_dff_reset_en_bypass
+   #(.width_p(1))
+   rdma_pending_reg
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.en_i(m_arvalid_i | m_rlast_i)
+     ,.data_i(m_arvalid_i)
+     ,.data_o(rdma_pending_r)
+     );
+
+  bsg_dff_reset_en_bypass
+   #(.width_p(1))
+   wdma_pending_reg
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.en_i(m_awvalid_i | m_bvalid_i)
+     ,.data_i(m_awvalid_i)
+     ,.data_o(wdma_pending_r)
+     );
 
   always_comb
     begin
@@ -182,7 +213,8 @@ module bp_nonsynth_core_profiler
       stall_stage_n[0]                    = '0;
       stall_stage_n[0].fe_cmd            |= fe_cmd_nonattaboy_i;
       stall_stage_n[0].icache_miss       |= (~icache_ready_i | (if2_v_i & ~icache_data_v_i));
-      stall_stage_n[3].l2_miss           |= ~icache_ready_i & ~l2_ready_li;
+      stall_stage_n[0].l2_miss           |= ~icache_ready_i & ~l2_ready_li;
+      stall_stage_n[0].dma               |= ~icache_ready_i & ~l2_ready_li & dma_pending_li;
 
       // IF1
       stall_stage_n[1]                    = stall_stage_r[0];
@@ -227,6 +259,7 @@ module bp_nonsynth_core_profiler
       stall_stage_n[3].dtlb_miss         |= commit_pkt.dtlb_load_miss | commit_pkt.dtlb_store_miss | commit_pkt.dtlb_fill_v;
       stall_stage_n[3].dcache_miss       |= commit_pkt.dcache_miss | commit_pkt.dcache_fail;
       stall_stage_n[3].l2_miss           |= ~dcache_ready_i & ~l2_ready_li;
+      stall_stage_n[3].dma               |= ~dcache_ready_i & ~l2_ready_li & dma_pending_li;
 
       // EX1
       // BE exception stalls
