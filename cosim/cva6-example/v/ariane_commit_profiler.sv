@@ -141,10 +141,10 @@ module ariane_commit_profiler
     , input issue_en_i
     , input [$clog2(NR_SB_ENTRIES)-1:0] issue_pointer_q_i
 
-    , input cmt_ack_i
+    , input [1:0] cmt_ack_i
+    , input scoreboard_entry_t [1:0] cmt_instr_i
     , input cmt_issued_q_i
     , input cmt_lsu_ready_i
-    , input scoreboard_entry_t cmt_instr_i
     , input [$clog2(NR_SB_ENTRIES)-1:0] cmt_pointer_q_i
 
     , input m_arvalid_i
@@ -198,6 +198,12 @@ module ariane_commit_profiler
     , output [width_p-1:0] rdma_cnt_o
     , output [width_p-1:0] wdma_wait_o
     , output [width_p-1:0] rdma_wait_o
+
+    , output [width_p-1:0] ilong_instr_o
+    , output [width_p-1:0] flong_instr_o
+    , output [width_p-1:0] fma_instr_o
+    , output [width_p-1:0] aux_instr_o
+    , output [width_p-1:0] mem_instr_o
   );
 
   typedef enum logic [2:0] {IC_FLUSH, IC_IDLE, IC_READ, IC_MISS, IC_KILL_ATRANS, IC_KILL_MISS} icache_state_e;
@@ -259,14 +265,12 @@ module ariane_commit_profiler
   wire sbuf_spec_haz_li = st_valid_li & (st_state_q_i == ST_WAIT_STORE_READY);
 
   // Commit stalls
-  wire cmt_haz_li = cmt_instr_i.valid & ~cmt_ack_i;
-  wire sbuf_cmt_haz_li = cmt_instr_i.valid & (cmt_instr_i.fu == STORE) & ~(is_amo(cmt_instr_i.op)) & ~cmt_lsu_ready_i;
+  wire cmt_haz_li = cmt_instr_i[0].valid & ~cmt_ack_i[0];
+  wire sbuf_cmt_haz_li = cmt_instr_i[0].valid & (cmt_instr_i[0].fu == STORE) & ~(is_amo(cmt_instr_i[0].op)) & ~cmt_lsu_ready_i;
 
   // DMA stalls
   wire ic_dma_li = rdma_pending_r & (rdma_id_r == 5'b00000);
   wire dc_dma_li = (rdma_pending_r & (rdma_id_r == 5'b01100)) | (wdma_pending_r & (wdma_id_r == 5'b01100));
-  wire tmp_ic = ic_dma_li & ~icache_miss;
-  wire tmp_dc = dc_dma_li & ~sbuf_cmt_haz_li & ~ld_in_dcache_li & ~ld_page_off_li;
 
   bsg_counter_up_down
    #(.max_val_p(3)
@@ -475,7 +479,7 @@ module ariane_commit_profiler
     //Scoreboard WB
     //If this instruction is issued and was not issued in the prev cycle
     if(cmt_issued_q_i && !(issue_en_r && (issue_pointer_q_r == cmt_pointer_q_i))) begin
-      unique case(cmt_instr_i.fu)
+      unique case(cmt_instr_i[0].fu)
         ALU, CTRL_FLOW, CSR, MULT:
           commit = wb_r[3];
         LOAD:
@@ -503,11 +507,11 @@ module ariane_commit_profiler
   logic stall_reason_v;
 
   logic [$bits(stall_reason_e)-1:0] extra_stall_lo;
-  wire unknown_lo = ~cmt_ack_i & ~(|commit);
-  wire extra_lo = cmt_ack_i & (|commit);
+  wire unknown_lo = ~cmt_ack_i[0] & ~(|commit);
+  wire extra_lo = cmt_ack_i[0] & (|commit);
   assign extra_stall_lo = extra_lo ? stall_reason_lo : '0;
 
-  wire stall_v = ~cmt_ack_i;
+  wire stall_v = ~cmt_ack_i[0];
   assign stall_reason_enum = stall_reason_e'(stall_reason_lo);
   bsg_priority_encode
    #(.width_p($bits(stall_reason_s)), .lo_to_hi_p(1))
@@ -614,5 +618,29 @@ module ariane_commit_profiler
    ,.up_i(en_i & rdma_pending_r)
    ,.count_o(rdma_wait_o)
    );
+
+  // Instruction profiling
+  `define is_ilong(instr) ((``instr``.fu inside {MULT}) & (``instr``.op inside {DIV, DIVU, DIVW, DIVUW, REM, REMU, REMW, REMUW}))
+  `define is_flong(instr) ((``instr``.fu inside {FPU}) & (``instr``.op inside {FDIV, FSQRT}))
+  `define is_fma(instr) ((``instr``.fu inside {FPU}) & (``instr``.op inside {FADD, FSUB, FMUL, FMADD, FMSUB, FNMSUB, FNMADD}))
+  `define is_aux(instr) ((``instr``.fu inside {FPU}) & ~`is_flong(``instr``) & ~`is_fma(``instr``))
+  `define is_mem(instr) ((``instr``.fu inside {LOAD, STORE}) | ((``instr``.fu inside {CSR}) & (``instr``.op inside {FENCE, FENCE_I})))
+
+  `define declare_instr_counter(name) \
+  bsg_counter_up_down \
+   #(.max_val_p((width_p+1)'(2**width_p-1)), .init_val_p(0), .max_step_p(2)) \
+   ``name``_instr_cnt \
+   (.clk_i(clk_i) \
+   ,.reset_i(reset_i) \
+   ,.down_i('0) \
+   ,.up_i(en_i ? ((cmt_ack_i[0] & `is_``name``(cmt_instr_i[0])) + (cmt_ack_i[1] & `is_``name``(cmt_instr_i[1]))) : '0) \
+   ,.count_o(``name``_instr_o) \
+   );
+
+  `declare_instr_counter(ilong)
+  `declare_instr_counter(flong)
+  `declare_instr_counter(fma)
+  `declare_instr_counter(aux)
+  `declare_instr_counter(mem)
 
 endmodule

@@ -37,11 +37,12 @@ const char* metrics[] = {
   "waw_flu", "waw_lsu", "waw_fpu", "waw_reorder",
   "raw_flu", "raw_lsu", "raw_fpu",
   "br_haz", "br_miss", "mul_haz", "csr_buf", "div_busy",
-  "ld_pipe", "ld_grant", "ls_sbuf", "ld_dcache",
+  "ld_pipe", "ld_grant", "ld_sbuf", "ld_dcache",
   "st_pipe", "sbuf_spec", "fpu_busy",
   "amo_flush", "csr_flush", "exception",
   "cmt_haz", "sbuf_cmt", "dc_dma", "unknown",
-  "wdma_cnt", "rdma_cnt", "wdma_wait", "rdma_wait"
+  "wdma_cnt", "rdma_cnt", "wdma_wait", "rdma_wait",
+  "ilong_instr", "flong_instr", "fma_instr", "aux_instr", "mem_instr"
 };
 
 const char* samples[] = {
@@ -223,10 +224,11 @@ extern "C" void cosim_main(char *argstr) {
     if (data != 0) {
       data = zpl->axil_read(0x14 + GP0_ADDR_BASE);
       done |= decode_bp_output(zpl, data);
-    } else if (done) {
-      // deasserting counter enable
-      zpl->axil_write(0x10 + GP0_ADDR_BASE, 0x0, mask1);
-      break;
+      if (done) {
+        // deasserting counter enable
+        zpl->axil_write(0x10 + GP0_ADDR_BASE, 0x0, mask1);
+        break;
+      }
     }
   }
 #ifdef FPGA
@@ -357,9 +359,6 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
           data = data & rotl((uint32_t)0xffffff00,shift) + nbf[2] & ((uint32_t)0x000000ff << shift);
           zpl->axil_write(GP1_ADDR_BASE - 0x80000000 + nbf[1] - offset, data, 0xf);
         }
-      }
-      else {
-        zpl->axil_write(GP1_ADDR_BASE + 0x20000000 + nbf[1], nbf[2], 0xf);
       }
     } else if (nbf[0] == 0xfe) {
       continue;

@@ -154,7 +154,7 @@ module top_zynq
 
    `define COREPATH ariane.i_ariane
 
-   localparam csr_num_lp = 42;
+   localparam csr_num_lp = 47;
    logic [csr_num_lp-1:0][64-1:0] csr_data_li;
 
   bsg_dff_reset_en #(
@@ -239,10 +239,10 @@ module top_zynq
     ,.issue_en_i(`COREPATH.issue_stage_i.i_scoreboard.issue_en)
     ,.issue_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.issue_pointer_q)
 
-    ,.cmt_ack_i(`COREPATH.commit_stage_i.commit_ack_o[0])
+    ,.cmt_ack_i(`COREPATH.commit_stage_i.commit_ack_o[1:0])
+    ,.cmt_instr_i(`COREPATH.commit_stage_i.commit_instr_i[1:0])
     ,.cmt_issued_q_i(`COREPATH.issue_stage_i.i_scoreboard.mem_q_commit.issued)
     ,.cmt_lsu_ready_i(`COREPATH.commit_stage_i.commit_lsu_ready_i)
-    ,.cmt_instr_i(`COREPATH.commit_stage_i.commit_instr_i[0])
     ,.cmt_pointer_q_i(`COREPATH.issue_stage_i.i_scoreboard.commit_pointer_q[0])
 
     ,.m_arvalid_i(m00_axi_arvalid)
@@ -295,6 +295,11 @@ module top_zynq
     ,.rdma_cnt_o    (csr_data_li[39])
     ,.wdma_wait_o   (csr_data_li[40])
     ,.rdma_wait_o   (csr_data_li[41])
+    ,.ilong_instr_o (csr_data_li[42])
+    ,.flong_instr_o (csr_data_li[43])
+    ,.fma_instr_o   (csr_data_li[44])
+    ,.aux_instr_o   (csr_data_li[45])
+    ,.mem_instr_o   (csr_data_li[46])
   );
 
    // use this as a way of figuring out how much memory a RISC-V program is using
