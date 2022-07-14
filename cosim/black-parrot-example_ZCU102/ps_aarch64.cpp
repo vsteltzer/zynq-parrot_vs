@@ -385,12 +385,12 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
     if (nbf[0] == 0x3) {
       // we map BP physical addresses for DRAM (0x8000_0000 - 0x9FFF_FFFF)
       // (256MB)
-      // to the same ARM physical addresses
+      // to ARM (0x50_0000_0000 - 0x50_1FFF_FFFF) (GP1_ADDR_BASE = 0x50_0000_0000)
       // see top_fpga.v for more details
 
       if (nbf[1] >= 0x80000000) {
         address = nbf[1];
-        address = address;
+        address = address - 0x80000000 + GP1_ADDR_BASE;
         data = nbf[2];
         nbf[2] = nbf[2] >> 32;
         zpl->axil_write(address, data, 0xf);
@@ -399,10 +399,10 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
         zpl->axil_write(address, data, 0xf);
       }
       // we map BP physical address for CSRs etc (0x0000_0000 - 0x0FFF_FFFF)
-      // to ARM address to 0xA0000_0000 - 0xAFFF_FFFF  (256MB)
+      // to ARM address to 0x50_2000_0000 - 0x50_3FFF_FFFF  (256MB)
       else {
         address = nbf[1];
-        address = address + 0xA0000000;
+        address = address + GP1_ADDR_BASE + 0x20000000;
         data = nbf[2];
         zpl->axil_write(address, data, 0xf);
       }
