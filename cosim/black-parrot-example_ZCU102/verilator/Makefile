@@ -15,7 +15,7 @@ export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
 export SIM_DEFINES  += -DVERILATOR
-export PS_ARCH      := __arm__
+export PS_ARCH      := __aarch64__
 
 SKIP_DRAM ?= -DSKIP_DRAM_TESTING
 BP_NCPUS ?= 1

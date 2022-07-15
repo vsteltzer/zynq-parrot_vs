@@ -276,7 +276,7 @@ extern "C" void cosim_main(char *argstr) {
 
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
-    bsg_pr_info("Data: %x \n", data);
+    // bsg_pr_info("Data: %x \n", data);
     if (data != 0) {
       data = zpl->axil_read(0xC + GP0_ADDR_BASE);
       int core = 0;
