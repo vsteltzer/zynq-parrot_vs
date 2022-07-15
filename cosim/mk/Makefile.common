@@ -28,7 +28,7 @@ export ARM=1
 export VERILATOR=/usr/local/bin/verilator
 else
 export ARM=0
-export VERILATOR ?= verilator
+export VERILATOR ?= $(BLACKPARROT_TOOLS_DIR)/verilator/bin/verilator
 endif
 # TODO: Check verilator version
 export VIVADO    ?= vivado

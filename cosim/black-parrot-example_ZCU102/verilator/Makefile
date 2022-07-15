@@ -9,13 +9,13 @@ export TOP_MODULE ?= top
 #############################
 # Accelerator Software Settings
 #############################
-export NBF_FILE     ?= $(abspath ../hello.nbf)
-export HOST_PROGRAM ?= $(abspath ../ps.cpp)
+export NBF_FILE     ?= $(abspath ../hello_world.nbf)
+export HOST_PROGRAM ?= $(abspath ../ps_aarch64.cpp)
 export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
 export SIM_ARGS     += $(NBF_FILE)
 export SIM_DEFINES  += -DVERILATOR
-export PS_ARCH      ?= __aarch64__
+export PS_ARCH      := __arm__
 
 SKIP_DRAM ?= -DSKIP_DRAM_TESTING
 BP_NCPUS ?= 1
@@ -33,6 +33,7 @@ CFLAGS += -DHP0_ENABLE -DHP0_ADDR_BASE=0x1000000U -DHP0_ADDR_WIDTH=32 -DHP0_DATA
 CFLAGS += -DSCRATCHPAD_ENABLE
 CFLAGS += -DBP_NCPUS=$(BP_NCPUS)
 CFLAGS += $(INCLUDES) $(SKIP_DRAM)
+CFLAGS += -DARCHITECTURE=$(PS_ARCH)
 # Enable backpressure
 #CFLAGS += -DSIM_BACKPRESSURE_ENABLE
 #CFLAGS += -DSIM_BACKPRESSURE_CHANCE=5

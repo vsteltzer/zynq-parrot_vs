@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <bitset>
 
-#include "bp_zynq_pl.h"
+#include "bp_zynq_aarch64_pl.h"
 #include "bsg_printing.h"
 #include "bsg_argparse.h"
 
@@ -42,7 +42,7 @@ void *monitor(void *vargp) {
   }
 }
 
-inline unsigned long long get_counter_64(bp_zynq_pl *zpl, unsigned int addr) {
+inline unsigned long long get_counter_64(bp_zynq_pl *zpl, axil_addr_uint addr) {
   unsigned long long val;
   do {
     unsigned int val_hi = zpl->axil_read(addr + 4);
@@ -177,10 +177,10 @@ extern "C" void cosim_main(char *argstr) {
               "increase monotonically  (testing ARM GP1 connections)\n");
 
   for (int q = 0; q < 10; q++) {
-    int z = zpl->axil_read(0xA0000000U + 0x30bff8);
+    int z = zpl->axil_read(GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
     // bsg_pr_dbg_ps("ps.cpp: %d%c",z,(q % 8) == 7 ? '\n' : ' ');
     // read second 32-bits
-    int z2 = zpl->axil_read(0xA0000000U + 0x30bff8 + 4);
+    int z2 = zpl->axil_read(GP1_ADDR_BASE + 0x20000000 + 0x30bff8 + 4);
     // bsg_pr_dbg_ps("ps.cpp: %d%c",z2,(q % 8) == 7 ? '\n' : ' ');
   }
 
@@ -188,13 +188,13 @@ extern "C" void cosim_main(char *argstr) {
               "(testing ARM GP1 connections)\n");
 
   bsg_pr_info("ps.cpp: reading mtimecmp\n");
-  int y = zpl->axil_read(0xA0000000U + 0x304000);
+  int y = zpl->axil_read(GP1_ADDR_BASE + 0x20000000 + 0x304000);
 
   bsg_pr_info("ps.cpp: writing mtimecmp\n");
-  zpl->axil_write(0xA0000000U + 0x304000, y + 1, mask1);
+  zpl->axil_write(GP1_ADDR_BASE + 0x20000000 + 0x304000, y + 1, mask1);
 
   bsg_pr_info("ps.cpp: reading mtimecmp\n");
-  assert(zpl->axil_read(0xA0000000U + 0x304000) == y + 1);
+  assert(zpl->axil_read(GP1_ADDR_BASE + 0x20000000 + 0x304000) == y + 1);
 
 #ifdef DRAM_TEST
 
@@ -203,11 +203,11 @@ extern "C" void cosim_main(char *argstr) {
       "ps.cpp: attempting to write L2 %d times over %d MB (testing ARM GP1 "
       "and HP0 connections)\n",
       num_times * outer, (allocated_dram) >> 20);
-  zpl->axil_write(0x80000000, 0x12345678, mask1);
+  zpl->axil_write(GP1_ADDR_BASE, 0x12345678, mask1);
 
   for (int s = 0; s < outer; s++)
     for (int t = 0; t < num_times; t++) {
-      zpl->axil_write(0x80000000 + 32768 * t + s * 4, 0x1ADACACA + t + s,
+      zpl->axil_write(GP1_ADDR_BASE + 32768 * t + s * 4, 0x1ADACACA + t + s,
                       mask1);
     }
   bsg_pr_info("ps.cpp: finished write L2 %d times over %d MB\n",
@@ -236,7 +236,7 @@ extern "C" void cosim_main(char *argstr) {
       num_times * outer, (allocated_dram) >> 20);
   for (int s = 0; s < outer; s++)
     for (int t = 0; t < num_times; t++)
-      if (zpl->axil_read(0x80000000 + 32768 * t + s * 4) == 0x1ADACACA + t + s)
+      if (zpl->axil_read(GP1_ADDR_BASE + 32768 * t + s * 4) == 0x1ADACACA + t + s)
         matches++;
       else
         mismatches++;
@@ -258,7 +258,7 @@ extern "C" void cosim_main(char *argstr) {
   clock_gettime(CLOCK_MONOTONIC, &start);
   unsigned long long minstrret_start =
       get_counter_64(zpl, 0x18 + GP0_ADDR_BASE);
-  unsigned long long mtime_start = get_counter_64(zpl, 0xA0000000 + 0x30bff8);
+  unsigned long long mtime_start = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
   bsg_pr_dbg_ps("ps.cpp: finished nbf load\n");
   bsg_pr_info("ps.cpp: polling i/o\n");
 
@@ -276,6 +276,7 @@ extern "C" void cosim_main(char *argstr) {
 
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
+    bsg_pr_info("Data: %x \n", data);
     if (data != 0) {
       data = zpl->axil_read(0xC + GP0_ADDR_BASE);
       int core = 0;
@@ -290,7 +291,7 @@ extern "C" void cosim_main(char *argstr) {
     }
   }
 
-  unsigned long long mtime_stop = get_counter_64(zpl, 0xA0000000 + 0x30bff8);
+  unsigned long long mtime_stop = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
 
   unsigned long long minstrret_stop = get_counter_64(zpl, 0x18 + GP0_ADDR_BASE);
   // test delay for reading counter
@@ -390,7 +391,11 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
 
       if (nbf[1] >= 0x80000000) {
         address = nbf[1];
+#if ARCHITECTURE == __aarch64__ 
         address = address - 0x80000000 + GP1_ADDR_BASE;
+#elif ARCHITECTURE == __arm__   
+        address = address;
+#endif             
         data = nbf[2];
         nbf[2] = nbf[2] >> 32;
         zpl->axil_write(address, data, 0xf);
@@ -402,7 +407,11 @@ void nbf_load(bp_zynq_pl *zpl, char *nbf_filename) {
       // to ARM address to 0x50_2000_0000 - 0x50_3FFF_FFFF  (256MB)
       else {
         address = nbf[1];
+#if ARCHITECTURE == __aarch64__ 
         address = address + GP1_ADDR_BASE + 0x20000000;
+#elif ARCHITECTURE == __arm__   
+        address = address + 0xA0000000;
+#endif                     
         data = nbf[2];
         zpl->axil_write(address, data, 0xf);
       }
