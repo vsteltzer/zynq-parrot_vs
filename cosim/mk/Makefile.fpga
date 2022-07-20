@@ -74,7 +74,7 @@ load_bitstream: $(EXE)
 # of addresses could apply to other DRAM-using accelerators
 
 reload_bitstream_keep_dram:
-	echo 'import pprint; from pynq import Overlay, MMIO; mmio=MMIO(0x40000000,0x1000); val4 = mmio.read(0x4); val8 = mmio.read(0x8);  overlay=Overlay("$(BASENAME)_bd_1.bit"); print("transferring over: ", hex(val4), hex(val8)); mmio.write(0x4,val4); mmio.write(0x8,val8);  print (overlay.__doc__); pprint.pprint(overlay.ip_dict,width=1); pprint.pprint(overlay.clock_dict,width=1)' | sudo python3
+	echo 'import pprint; from pynq import Overlay, MMIO; mmio=MMIO(0x40000000,0x1000); val4 = mmio.read(0x4); val8 = mmio.read(0x8);  overlay=Overlay("$(BASENAME)_bd_1.bit"); print("transferring over: ", hex(val4), hex(val8)); mmio.write(0x4,val4); mmio.write(0x8,val8);  print (overlay.__doc__); pprint.pprint(overlay.ip_dict,width=1); pprint.pprint(overlay.clock_dict,width=1)' | sudo -E python3
 
 print_clocks:
 	echo 'from pynq import Clocks; print("PL Clock: ",Clocks.fclk0_mhz,"MHz"); print("PS Clock: ",Clocks.cpu_mhz,"MHz");' | sudo python3
