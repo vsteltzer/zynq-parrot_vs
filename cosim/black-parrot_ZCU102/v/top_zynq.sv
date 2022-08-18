@@ -9,7 +9,7 @@ module top_zynq
  import bp_common_pkg::*;
  import bp_be_pkg::*;
  import bp_me_pkg::*;
- #(parameter bp_params_e bp_params_p = e_bp_multicore_1_acc_vdp_cfg
+ #(parameter bp_params_e bp_params_p = e_bp_multicore_1_acc_gemm_cfg
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_bedrock_mem_if_widths(paddr_width_p, did_width_p, lce_id_width_p, lce_assoc_p)
 
@@ -179,6 +179,11 @@ module top_zynq
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
    logic [127:0] mem_profiler_r;
+   
+   // Pull matrix entries from accelerator for debugging
+   logic [15:0] matA_entry1 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[0][0];
+   logic [15:0] matA_entry2 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[1][0];
+   logic [31:0] matA_pull = {>>{matA_entry1, matA_entry2}};
 
    logic [63:0] minstret_lo;
    if (cce_type_p != e_cce_uce)
@@ -201,7 +206,7 @@ module top_zynq
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
-      ,.num_regs_pl_to_ps_p(2+4)
+      ,.num_regs_pl_to_ps_p(2+4+1)
       ,.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH)
       ,.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
       ) zps
@@ -226,7 +231,8 @@ module top_zynq
                        , mem_profiler_r[63:32]
                        , mem_profiler_r[31:0]
                        , minstret_lo[63:32]
-                       , minstret_lo[31:0]}
+                       , minstret_lo[31:0]
+                       , matA_pull}
                      )
 
         ,.pl_to_ps_fifo_data_i (pl_to_ps_fifo_data_li)

@@ -274,6 +274,16 @@ extern "C" void cosim_main(char *argstr) {
     }
 #endif
 
+    bsg_pr_info("ps.cpp: Poll 0: %x\n", zpl->axil_read(0x0 + GP0_ADDR_BASE));
+    bsg_pr_info("ps.cpp: Poll 4: %x\n", zpl->axil_read(0x4 + GP0_ADDR_BASE));
+    bsg_pr_info("ps.cpp: Poll 8: %x\n", zpl->axil_read(0x8 + GP0_ADDR_BASE));
+    bsg_pr_info("ps.cpp: Poll C: %x\n", zpl->axil_read(0xC + GP0_ADDR_BASE));
+    bsg_pr_info("ps.cpp: Poll 10: %x\n", zpl->axil_read(0x10 + GP0_ADDR_BASE));
+    bsg_pr_info("ps.cpp: Poll 14: %x\n", zpl->axil_read(0x14 + GP0_ADDR_BASE));                
+    bsg_pr_info("ps.cpp: Poll 18: %x\n", zpl->axil_read(0x18 + GP0_ADDR_BASE));    
+    bsg_pr_info("ps.cpp: Poll 1C: %x\n", zpl->axil_read(0x1C + GP0_ADDR_BASE));                
+    bsg_pr_info("ps.cpp: Poll 20: %x\n", zpl->axil_read(0x20 + GP0_ADDR_BASE));                                                            
+    
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
     // bsg_pr_info("Data: %x \n", data);
