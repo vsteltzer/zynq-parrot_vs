@@ -181,9 +181,12 @@ module top_zynq
    logic [127:0] mem_profiler_r;
    
    // Pull matrix entries from accelerator for debugging
-   logic [15:0] matA_entry1 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[0][0];
-   logic [15:0] matA_entry2 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[1][0];
-   logic [31:0] matA_pull = {>>{matA_entry1, matA_entry2}};
+   logic [15:0] matA_entry1;
+   assign matA_entry1 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[0][0];
+   logic [15:0] matA_entry2;
+   assign matA_entry2 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[1][0];
+   logic [31:0] matA_pull;
+   assign matA_pull = {>>{matA_entry1, matA_entry2}};
 
    logic [63:0] minstret_lo;
    if (cce_type_p != e_cce_uce)
@@ -232,7 +235,8 @@ module top_zynq
                        , mem_profiler_r[31:0]
                        , minstret_lo[63:32]
                        , minstret_lo[31:0]
-                       , matA_pull}
+                       , matA_pull[31:0]
+                      }
                      )
 
         ,.pl_to_ps_fifo_data_i (pl_to_ps_fifo_data_li)

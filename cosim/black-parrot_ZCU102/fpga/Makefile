@@ -11,7 +11,7 @@ export BASENAME   ?= BP_ZCU102_gemm
 #############################
 # Accelerator Software Settings
 #############################
-export NBF_FILE     ?= $(abspath ../prog.nbf)
+export NBF_FILE     ?= $(abspath ../coherent_accelerator_GeMM_print.nbf)
 export HOST_PROGRAM ?= $(abspath ../ps_aarch64.cpp)
 export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
