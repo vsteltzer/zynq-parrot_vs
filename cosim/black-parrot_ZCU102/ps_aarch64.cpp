@@ -274,12 +274,12 @@ extern "C" void cosim_main(char *argstr) {
     }
 #endif
 
-    int testMat = zpl->axil_read(0x20 + GP0_ADDR_BASE);
-    while(testMat==0)
+unsigned long long mat_ptr = get_counter_64(zpl, 0x34 + GP0_ADDR_BASE);
+    while(mat_ptr==0)
     {
-    	testMat = zpl->axil_read(0x20 + GP0_ADDR_BASE);
+    	mat_ptr = get_counter_64(zpl, 0x34 + GP0_ADDR_BASE);
     }
-    bsg_pr_info("ps.cpp: Poll 20: %x\n", testMat);                                                            
+    bsg_pr_info("ps.cpp: Poll 20: %llu\n", testMat);                                                            
     
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);

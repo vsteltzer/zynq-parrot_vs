@@ -187,6 +187,10 @@ module top_zynq
    assign matA_entry2 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a[1][0];
    logic [31:0] matA_pull;
    assign matA_pull = {>>{matA_entry1, matA_entry2}};
+   
+  // Pull Matrix A pointer from accelerator for debugging
+   logic [63:0] matA_ptr_pull;
+   assign matA_entry1 = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.input_a_ptr;
 
    logic [63:0] minstret_lo;
    if (cce_type_p != e_cce_uce)
@@ -209,7 +213,7 @@ module top_zynq
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
-      ,.num_regs_pl_to_ps_p(2+4+1)
+      ,.num_regs_pl_to_ps_p(2+4+3)
       ,.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH)
       ,.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
       ) zps
@@ -229,13 +233,15 @@ module top_zynq
         // to increment the counters.
         //
 
-        ,.csr_data_i({ mem_profiler_r[127:96]
-                       , mem_profiler_r[95:64]
-                       , mem_profiler_r[63:32]
-                       , mem_profiler_r[31:0]
-                       , minstret_lo[63:32]
-                       , minstret_lo[31:0]
-                       , matA_pull[31:0]
+        ,.csr_data_i({ matA_ptr_pull[63:32]         // 0x38
+                       , matA_ptr_pull[31:0]        // 0x34
+                       , matA_pull[31:0]            // 0x30
+                       , mem_profiler_r[127:96]     // 0x2C
+                       , mem_profiler_r[95:64]      // 0x28
+                       , mem_profiler_r[63:32]      // 0x24
+                       , mem_profiler_r[31:0]       // 0x20
+                       , minstret_lo[63:32]         // 0x1C
+                       , minstret_lo[31:0]          // 0x18
                       }
                      )
 
