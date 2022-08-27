@@ -9,7 +9,7 @@ export TOP_MODULE ?= top
 #############################
 # Accelerator Software Settings
 #############################
-export NBF_FILE     ?= $(abspath ../coherent_accelerator_GeMM_sPrint.nbf)
+export NBF_FILE     ?= $(abspath ../coherent_accelerator_GeMM.nbf)
 export HOST_PROGRAM ?= $(abspath ../ps_aarch64.cpp)
 export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
@@ -26,7 +26,7 @@ ifeq ($(PS_ARCH), __arm__)
 	CFLAGS += -DGP0_ENABLE -DGP0_ADDR_BASE=0x40000000U -DGP0_ADDR_WIDTH=6 -DGP0_DATA_WIDTH=32 -DGP0_HIER_BASE=TOP.top.axil0
 	CFLAGS += -DGP1_ENABLE -DGP1_ADDR_BASE=0x80000000U -DGP1_ADDR_WIDTH=30 -DGP1_DATA_WIDTH=32 -DGP1_HIER_BASE=TOP.top.axil1
 else ifeq ($(PS_ARCH), __aarch64__)
-	CFLAGS += -DGP0_ENABLE -DGP0_ADDR_BASE=0x1000000000U -DGP0_ADDR_WIDTH=6 -DGP0_DATA_WIDTH=32 -DGP0_HIER_BASE=TOP.top.axil0
+	CFLAGS += -DGP0_ENABLE -DGP0_ADDR_BASE=0x1000000000U -DGP0_ADDR_WIDTH=8 -DGP0_DATA_WIDTH=32 -DGP0_HIER_BASE=TOP.top.axil0
 	CFLAGS += -DGP1_ENABLE -DGP1_ADDR_BASE=0x5000000000U -DGP1_ADDR_WIDTH=30 -DGP1_DATA_WIDTH=32 -DGP1_HIER_BASE=TOP.top.axil1
 endif
 CFLAGS += -DHP0_ENABLE -DHP0_ADDR_BASE=0x1000000U -DHP0_ADDR_WIDTH=32 -DHP0_DATA_WIDTH=32 -DHP0_HIER_BASE=TOP.top.axil2

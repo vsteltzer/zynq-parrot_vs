@@ -188,14 +188,40 @@ module top_zynq
    //logic [31:0] matA_pull;
    //assign matA_pull = {>>{matA_entry1, matA_entry2}};
    
-  // Pull Matrix A pointer from accelerator for debugging
+  // Pull Matrix A pointer
    logic [63:0] input_a_ptr;
-   assign input_a_ptr = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.input_a_ptr;
-// Pull Matrix B pointer from accelerator for debugging
-   logic [63:0] input_b_ptr;
-   assign input_b_ptr = blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.input_b_ptr;
+   logic [63:0] input_b_ptr;   
+   logic [31:0] state_n;   
+   logic [63:0] start_cmd;   
+   logic [63:0] res_status; 
+   logic [63:0] dimension_16bit;   
+   logic [63:0] minstret_lo;   
+   logic [15:0] matrix_a[0:19][0:19];
+   logic [63:0] matrix_a_row1;
+   logic [15:0] matrix_b[0:19][0:19];
+   logic [63:0] matrix_b_row1;
+   logic [15:0] matrix_c[0:19][0:19]; 
+   logic [63:0] matrix_c_row1;   
+   logic [63:0] pointer_incrementer_64bit; 
+   logic [63:0] res_pointer_incrementer_64bit;       
+        
+     
+   assign input_a_ptr 						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.input_a_ptr;
+   assign input_b_ptr 						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.input_b_ptr;
+   assign state_n[4:0] 						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.state_n;
+   assign start_cmd 						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.start_cmd;   
+   assign res_status 						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.res_status;
+   assign dimension_16bit 					= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.dimension_16bit;
+   assign matrix_a							= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_a;
+   assign matrix_b							= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_b;
+   assign matrix_c    						= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.matrix_c;    
+   assign pointer_incrementer_64bit    		= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.pointer_incrementer_64bit;
+   assign res_pointer_incrementer_64bit		= blackparrot.m.multicore.cac.y[0].node.accel_tile_node.accel_tile.cacc_gemm.accelerator_link.res_pointer_incrementer_64bit;        
 
-   logic [63:0] minstret_lo;
+   assign matrix_a_row1 = {>>{matrix_a[0][0], matrix_a[0][1], matrix_a[0][2], matrix_a[0][3]}};
+   assign matrix_b_row1 = {>>{matrix_b[0][0], matrix_b[0][1], matrix_b[0][2], matrix_b[0][3]}};
+   assign matrix_c_row1 = {>>{matrix_c[0][0], matrix_c[0][1], matrix_c[0][2], matrix_c[0][3]}};      
+
    if (cce_type_p != e_cce_uce)
      assign minstret_lo = blackparrot.m.multicore.cc.y[0].x[0].tile_node.tile.core.core_minimal.be.calculator.pipe_sys.csr.minstret_lo;
    else
@@ -216,7 +242,7 @@ module top_zynq
       // need to update C_S00_AXI_ADDR_WIDTH accordingly
       ,.num_fifo_ps_to_pl_p(1)
       ,.num_fifo_pl_to_ps_p(1)
-      ,.num_regs_pl_to_ps_p(2+4+2+2)
+      ,.num_regs_pl_to_ps_p(2+4+11)
       ,.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH)
       ,.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
       ) zps
@@ -236,10 +262,29 @@ module top_zynq
         // to increment the counters.
         //
 
-        ,.csr_data_i({  input_b_ptr[63:32]          // 0x3C
+        ,.csr_data_i({ 
+        			    res_pointer_incrementer_64bit[63:32]  // 0x80        
+        			   , res_pointer_incrementer_64bit[31:0]  // 0x7C        
+        			   , pointer_incrementer_64bit[63:32]     // 0x78        
+        			   , pointer_incrementer_64bit[31:0]      // 0x74        
+        			   , matrix_c_row1[63:32]     // 0x70        
+        			   , matrix_c_row1[31:0]      // 0x6C        
+        			   , matrix_b_row1[63:32]     // 0x68        
+        			   , matrix_b_row1[31:0]      // 0x64        
+        			   , matrix_a_row1[63:32]     // 0x60        
+        			   , matrix_a_row1[31:0]      // 0x5C        
+        			   , dimension_16bit[63:32]     // 0x58        
+        			   , dimension_16bit[31:0]      // 0x54
+        			   , res_status[63:32]          // 0x50
+        			   , res_status[31:0]           // 0x4C            
+        			   , start_cmd[63:32]           // 0x48        
+        			   , start_cmd[31:0]            // 0x44        
+        			   , state_n[31:0]              // 0x40
+                       , input_b_ptr[63:32]         // 0x3C
                        , input_b_ptr[31:0]          // 0x38
                        , input_a_ptr[63:32]         // 0x34
                        , input_a_ptr[31:0]          // 0x30
+                       
                        , mem_profiler_r[127:96]     // 0x2C
                        , mem_profiler_r[95:64]      // 0x28
                        , mem_profiler_r[63:32]      // 0x24
