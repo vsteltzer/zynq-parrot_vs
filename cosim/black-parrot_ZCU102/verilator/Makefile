@@ -9,7 +9,7 @@ export TOP_MODULE ?= top
 #############################
 # Accelerator Software Settings
 #############################
-export NBF_FILE     ?= $(abspath ../coherent_accelerator_GeMM.nbf)
+export NBF_FILE     ?= $(abspath ../coherent_accelerator_vdp_custom.nbf)
 export HOST_PROGRAM ?= $(abspath ../ps_aarch64.cpp)
 export BASE_FLIST   ?= $(abspath ../flist.vcs)
 export FLIST        ?= $(abspath flist.vcs)
