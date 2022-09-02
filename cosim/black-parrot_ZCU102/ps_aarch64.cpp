@@ -17,6 +17,7 @@
 #include "bsg_printing.h"
 #include "bsg_argparse.h"
 
+#define PRINT_SIGNALS 0
 #define FREE_DRAM 0
 #define DRAM_ALLOCATE_SIZE 120 * 1024 * 1024
 
@@ -262,8 +263,57 @@ extern "C" void cosim_main(char *argstr) {
   bsg_pr_dbg_ps("ps.cpp: finished nbf load\n");
   bsg_pr_info("ps.cpp: polling i/o\n");
 
+#if PRINT_SIGNALS == 1
   unsigned long long test_time_start = 0;
+  unsigned long long input_a_ptr = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: input_a_ptr: %llu\n", input_a_ptr);
+  unsigned long long input_b_ptr = get_counter_64(zpl, 0x38 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: input_b_ptr: %llu\n", input_b_ptr);
+  unsigned state_n = zpl->axil_read(0x40 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: state_n: %u\n", state_n);
+  unsigned long long start_cmd = get_counter_64(zpl, 0x44 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: start_cmd: %llu\n", start_cmd);
+  unsigned res_status = zpl->axil_read(0x4C + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: res_status: %u\n", res_status);
+  unsigned Dim = zpl->axil_read(0x54 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: Dim: %u\n", Dim);
+  test_time_start = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
+  unsigned long long mat_a_row1 = get_counter_64(zpl, 0x5C + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: mat_a_row1: %llu\n", mat_a_row1);
+  unsigned long long mat_b_row1 = get_counter_64(zpl, 0x64 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: mat_b_row1: %llu\n", mat_b_row1);
+  unsigned long long mat_c_row1 = get_counter_64(zpl, 0x6C + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: mat_c_row1: %llu\n", mat_c_row1);
+  unsigned long long ptr_inc = get_counter_64(zpl, 0x74 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: ptr_inc: %llu\n", ptr_inc);
+  unsigned long long res_ptr_inc = get_counter_64(zpl, 0x7C + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: res_ptr_inc: %llu\n", res_ptr_inc);
+  unsigned long long matrix_size = get_counter_64(zpl, 0x84 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: matrix_size: %llu\n", matrix_size);
+  unsigned VALUES_PER_LINE = zpl->axil_read(0x8C + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: VALUES_PER_LINE: %u\n", VALUES_PER_LINE);
+  unsigned long long routing_mat_row1 = get_counter_64(zpl, 0x90 + GP0_ADDR_BASE);
+  bsg_pr_info("ps.cpp: routing_mat_row1: %llu\n", routing_mat_row1);
+#endif
 
+  while (1) {
+#ifndef FPGA
+    zpl->axil_poll();
+#endif
+#ifdef SIM_BACKPRESSURE_ENABLE
+    if (!(rand() % SIM_BACKPRESSURE_CHANCE)) {
+      for (int i = 0; i < SIM_BACKPRESSURE_LENGTH; i++) {
+        zpl->tick();
+      }
+    }
+
+#endif                                                  
+
+#if PRINT_SIGNALS == 1
+  unsigned long long test_time = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
+  if (test_time - test_time_start >= 500)
+  {
+      bsg_pr_info("ps.cpp: TEST_TIME: %llu\n", test_time);
       unsigned long long input_a_ptr = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
       bsg_pr_info("ps.cpp: input_a_ptr: %llu\n", input_a_ptr);
       unsigned long long input_b_ptr = get_counter_64(zpl, 0x38 + GP0_ADDR_BASE);
@@ -287,67 +337,20 @@ extern "C" void cosim_main(char *argstr) {
       bsg_pr_info("ps.cpp: ptr_inc: %llu\n", ptr_inc);
       unsigned long long res_ptr_inc = get_counter_64(zpl, 0x7C + GP0_ADDR_BASE);
       bsg_pr_info("ps.cpp: res_ptr_inc: %llu\n", res_ptr_inc);
-
-
-  while (1) {
-#ifndef FPGA
-    zpl->axil_poll();
+      unsigned long long matrix_size = get_counter_64(zpl, 0x84 + GP0_ADDR_BASE);
+      bsg_pr_info("ps.cpp: matrix_size: %llu\n", matrix_size);
+      unsigned VALUES_PER_LINE = zpl->axil_read(0x8C + GP0_ADDR_BASE);
+      bsg_pr_info("ps.cpp: VALUES_PER_LINE: %u\n", VALUES_PER_LINE);
+      unsigned long long routing_mat_row1 = get_counter_64(zpl, 0x90 + GP0_ADDR_BASE);
+      bsg_pr_info("ps.cpp: routing_mat_row1: %llu\n", routing_mat_row1);
+  }
 #endif
-#ifdef SIM_BACKPRESSURE_ENABLE
-    if (!(rand() % SIM_BACKPRESSURE_CHANCE)) {
-      for (int i = 0; i < SIM_BACKPRESSURE_LENGTH; i++) {
-        zpl->tick();
-      }
-    }
-
-#endif                                                  
-    
-//  unsigned long long test_time = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
-//  if (test_time - test_time_start >= 100)
-//  {
-//      bsg_pr_info("ps.cpp: TEST_TIME: %llu\n", test_time);
-//      unsigned long long input_a_ptr = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: input_a_ptr: %llu\n", input_a_ptr);
-//      unsigned long long input_b_ptr = get_counter_64(zpl, 0x38 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: input_b_ptr: %llu\n", input_b_ptr);
-//      unsigned state_n = zpl->axil_read(0x40 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: state_n: %u\n", state_n);
-//      unsigned long long start_cmd = get_counter_64(zpl, 0x44 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: start_cmd: %llu\n", start_cmd);
-//      unsigned res_status = zpl->axil_read(0x4C + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: res_status: %u\n", res_status);
-//      unsigned Dim = zpl->axil_read(0x54 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: Dim: %u\n", Dim);
-//      test_time_start = get_counter_64(zpl, GP1_ADDR_BASE + 0x20000000 + 0x30bff8);
-//      unsigned long long mat_a_row1 = get_counter_64(zpl, 0x5C + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: mat_a_row1: %llu\n", mat_a_row1);
-//      unsigned long long mat_b_row1 = get_counter_64(zpl, 0x64 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: mat_b_row1: %llu\n", mat_b_row1);
-//      unsigned long long mat_c_row1 = get_counter_64(zpl, 0x6C + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: mat_c_row1: %llu\n", mat_c_row1);
-//      unsigned long long ptr_inc = get_counter_64(zpl, 0x74 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: ptr_inc: %llu\n", ptr_inc);
-//      unsigned long long res_ptr_inc = get_counter_64(zpl, 0x7C + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: res_ptr_inc: %llu\n", res_ptr_inc);
-//  }
 
     // keep reading as long as there is data
     data = zpl->axil_read(0x10 + GP0_ADDR_BASE);
     // bsg_pr_info("Data: %x \n", data);
     if (data != 0) {
       data = zpl->axil_read(0xC + GP0_ADDR_BASE);
-
-//      unsigned long long input_a_ptr = get_counter_64(zpl, 0x30 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: input_a_ptr: %llu\n", input_a_ptr);
-//      unsigned state_n = zpl->axil_read(0x40 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: state_n: %u\n", state_n);
-//      unsigned long long start_cmd = get_counter_64(zpl, 0x44 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: start_cmd: %llu\n", start_cmd);
-//      unsigned res_status = zpl->axil_read(0x4C + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: res_status: %u\n", res_status);
-//      unsigned Dim = zpl->axil_read(0x54 + GP0_ADDR_BASE);
-//      bsg_pr_info("ps.cpp: Dim: %u\n", Dim);
-
       int core = 0;
       core_done = decode_bp_output(zpl, data, &core);
       if (core_done) {
