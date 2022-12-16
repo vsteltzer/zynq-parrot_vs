@@ -17,6 +17,8 @@ SED ?= sed
 # TOP_OF_MEM_RISC_V=0x83FFF000
 # 120 MB - 4096
 TOP_OF_MEM_RISC_V=0x877FF000
+# Custom
+#TOP_OF_MEM_RISC_V=0x8FFFFFFF
 
 # test command avoids error if $(SDK_DIR)/prog does not yet exist
 all-riscv-binaries:=$(shell test -d $(SDK_DIR)/prog && find $(SDK_DIR)/prog -iname "*.riscv")
@@ -141,7 +143,20 @@ build_libs: build_tools
 	$(MAKE)  -C $(SDK_DIR) -j1 bootrom
 
 # run on x86
-VPATH := $(wildcard ../cosim/import/black-parrot-sdk/prog/*)
+#VPATH := $(wildcard ../cosim/import/black-parrot-sdk/prog/*)
+RISCV_FILES := $(wildcard /mnt/blackparrot/zynq-parrot_vs/software/*.riscv)
+NBF_LOCAL := $(RISCV_FILES:.riscv=.nbf)
+#NBF_FILES_THIS_DIRECTORY := $(patsubst %.riscv,%.nbf,$(wildcard *.riscv))
+
+local_nbfs: $(NBF_LOCAL)
+
+$(NBF_LOCAL):$(RISCV_FILES)
+	$(RISCV_OBJCOPY) -O verilog $< $*.mem
+	$(SED) -i "s/@8/@0/g" $*.mem
+	python $(NBF_DIR)/nbf.py --config --boot_pc 0x80000000 --mem $*.mem --ncpus $(NBF_NCPUS) > $@
+	-rm $*.mem
+
+
 %.nbf: %.riscv
 	$(RISCV_OBJCOPY) -O verilog $< $*.mem
 	$(SED) -i "s/@8/@0/g" $*.mem

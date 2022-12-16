@@ -5,7 +5,7 @@
 `include "bp_be_defines.svh"
 `include "bp_me_defines.svh"
 
-module top_zynq
+module top_zynq_gemm
  import bp_common_pkg::*;
  import bp_be_pkg::*;
  import bp_me_pkg::*;
@@ -174,7 +174,7 @@ module top_zynq
    logic                                        bp_axi_rready;
 
    localparam debug_lp = 0;
-   localparam memory_upper_limit_lp = 120*1024*1024;
+   localparam memory_upper_limit_lp = 1024*1024*1024;//120*1024*1024;
 
    // use this as a way of figuring out how much memory a RISC-V program is using
    // each bit corresponds to a region of memory
